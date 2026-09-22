@@ -129,6 +129,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleLoginKey(msg)
 	case screenBind:
 		return m.handleBindKey(msg)
+	case screenRemote:
+		return m.handleRemoteKey(msg)
 	case screenConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -349,8 +351,8 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.finishBind()
 		}
 		switch m.bind.selected {
-		case 0: // bind this folder
-			return m.finishBind()
+		case 0: // bind this folder (may first ask for a repository address)
+			return m.prepareBind()
 		case 1: // go up
 			parent := filepath.Dir(m.bind.path)
 			entries, err := listDirs(parent)
@@ -381,6 +383,48 @@ func (m Model) finishBind() (tea.Model, tea.Cmd) {
 	m.busy = true
 	m.message = "正在绑定 " + m.bind.path + " …"
 	return m, m.bindCommand(m.bind.account, m.bind.path)
+}
+
+// prepareBind checks whether the folder still needs a repository address before
+// binding it.
+func (m Model) prepareBind() (tea.Model, tea.Cmd) {
+	status, err := m.app.Bindings.Status(m.ctx(), m.bind.path)
+	if err != nil {
+		m.errText = plainError(err)
+		return m, nil
+	}
+	if status.HasOrigin {
+		return m.finishBind()
+	}
+	guess := "https://" + m.bind.account.Provider.Endpoint.Host + "/" + m.bind.account.Provider.Username + "/" + filepath.Base(status.Repository) + ".git"
+	m.bind.needRemote = true
+	m.bind.remoteURL = guess
+	m.screen = screenRemote
+	return m, nil
+}
+
+func (m Model) handleRemoteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.screen = screenBind
+	case "backspace":
+		if len(m.bind.remoteURL) > 0 {
+			m.bind.remoteURL = m.bind.remoteURL[:len(m.bind.remoteURL)-1]
+		}
+	case "enter":
+		if strings.TrimSpace(m.bind.remoteURL) == "" {
+			m.errText = "请粘贴仓库地址（在平台网页上复制 https://… 地址）。"
+			return m, nil
+		}
+		m.busy = true
+		m.message = "正在设置仓库地址并绑定…"
+		return m, m.remoteAndBindCommand(m.bind.account, m.bind.path, strings.TrimSpace(m.bind.remoteURL))
+	default:
+		if msg.Type == tea.KeyRunes {
+			m.bind.remoteURL += string(msg.Runes)
+		}
+	}
+	return m, nil
 }
 
 func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

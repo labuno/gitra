@@ -57,3 +57,9 @@
 - 测试：`TestLoginWizardStepsAndMasking`、`TestBindPickerNavigation`、`TestOnboardingOfferAfterFirstLogin`、`TestConfirmDialogRunsAction`、`TestVerifyMessageRendering`、`TestPlainErrorTranslation` 全部通过。
 - Gates：`go test ./internal/presentation/tui/...`、`go test ./...`、`go vet ./...` 全 PASS。
 - Handoff：`artifact:tui-flows` 供 TUI-03 启动器与用户自举验证。
+
+## Amendment (2026-09-22) — repository address step
+
+- 用户验证路径需要「无命令推送」：仓库若还没有 origin，绑定前新增一步「填写/确认仓库地址」（预填 `https://<host>/<账号>/<文件夹名>.git`，可编辑）。
+- 实现：`BindingService.EnsureOriginRemote`（**只在缺失时写入 `remote.origin.url` + fetch refspec，已有 origin 绝不改写**，违反基线 §7 的风险为零）与 `BindingStatus.HasOrigin/OriginURL`；TUI 新增 `screenRemote` 与 `prepareBind`。
+- 证据：`internal/app/remote_setup_test.go`（新增/不改写/非法地址/状态上报）与 `TestBindAsksForRepositoryAddressWhenMissing`（无远端 → 询问；有远端 → 直接绑定）。

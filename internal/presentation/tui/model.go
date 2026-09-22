@@ -16,6 +16,7 @@ const (
 	screenDetail
 	screenLogin
 	screenBind
+	screenRemote
 	screenConfirm
 )
 
@@ -80,6 +81,11 @@ type bindState struct {
 	selected int
 	account  domain.Account
 	manual   bool // user is typing a path
+
+	// Remote step: some repositories have no origin yet. gitra asks for the
+	// address once and never rewrites an existing remote.
+	needRemote bool
+	remoteURL  string
 }
 
 // services bundles the application services the TUI is allowed to call

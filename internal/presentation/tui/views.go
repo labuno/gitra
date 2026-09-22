@@ -50,6 +50,8 @@ func (m Model) View() string {
 		builder.WriteString(m.viewLogin())
 	case screenBind:
 		builder.WriteString(m.viewBind())
+	case screenRemote:
+		builder.WriteString(m.viewRemote())
 	case screenConfirm:
 		builder.WriteString(m.viewConfirm())
 	}
@@ -240,6 +242,16 @@ func (m Model) viewBind() string {
 	return builder.String()
 }
 
+func (m Model) viewRemote() string {
+	var builder strings.Builder
+	builder.WriteString("这个文件夹还没有仓库地址\n\n")
+	builder.WriteString(subtitleStyle.Render("在平台网页上创建仓库并复制它的地址（https://…），粘贴到下面。\n"+
+		"已有的地址不会被修改；这里只补一个还没有的 origin。\n") + "\n")
+	builder.WriteString("> " + accentStyle.Render(m.bind.remoteURL+"▌") + "\n\n")
+	builder.WriteString(subtitleStyle.Render("回车确认并绑定，Esc 返回。") + "\n")
+	return builder.String()
+}
+
 func (m Model) viewConfirm() string {
 	return dialogStyle.Render(m.confirmPrompt+"\n\n[Y] 确认    [N] 取消") + "\n"
 }
@@ -254,6 +266,8 @@ func (m Model) helpLine() string {
 		return "↑↓ 选择   Enter 继续   Esc 返回"
 	case screenBind:
 		return "↑↓ 选择   Enter 打开/绑定   E 手动输入路径   Esc 返回"
+	case screenRemote:
+		return "输入/粘贴仓库地址   Enter 确认并绑定   Esc 返回"
 	case screenConfirm:
 		return "Y 确认   N 取消"
 	default:

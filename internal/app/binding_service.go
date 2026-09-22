@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
@@ -65,6 +66,11 @@ type BindingStatus struct {
 	// NeedsLogin is true when the account credential is missing (e.g. after
 	// logout) while repository metadata is still present.
 	NeedsLogin bool
+	// HasOrigin reports whether the repository already has an "origin" remote,
+	// and OriginURL carries its address. gitra never rewrites an existing
+	// remote (baseline §7); it may only offer to add a missing one.
+	HasOrigin bool
+	OriginURL string
 }
 
 // managedKeyNames is the ownership whitelist for one account (baseline §9):
@@ -206,6 +212,36 @@ func (s *BindingService) bindLocked(ctx context.Context, req BindRequest) (domai
 	return binding, nil
 }
 
+// EnsureOriginRemote adds an "origin" remote when the repository has none.
+// An existing origin is never touched (baseline §7).
+func (s *BindingService) EnsureOriginRemote(ctx context.Context, path, url string) error {
+	if strings.TrimSpace(url) == "" {
+		return fmt.Errorf("%w: repository address must not be empty", domain.ErrInvalid)
+	}
+	parsed, err := domain.ParseHTTPSRemoteURL(url)
+	if err != nil {
+		if _, sshErr := domain.ParseRemoteURL(url); sshErr != nil {
+			return fmt.Errorf("%w: %s", domain.ErrUnsupportedRemote, url)
+		}
+	} else if parsed.Host == "" {
+		return fmt.Errorf("%w: %s", domain.ErrUnsupportedRemote, url)
+	}
+
+	return s.deps.Locker.WithWriteLock(ctx, func() error {
+		repo, err := s.deps.Git.DiscoverRepository(ctx, path)
+		if err != nil {
+			return err
+		}
+		if _, ok := repo.RemoteByName("origin"); ok {
+			return nil // never rewrite an existing remote
+		}
+		if err := s.deps.Git.SetLocalConfig(ctx, repo, "remote.origin.url", strings.TrimSpace(url)); err != nil {
+			return err
+		}
+		return s.deps.Git.SetLocalConfig(ctx, repo, "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
+	})
+}
+
 // Unbind restores the pre-bind state and removes both records.
 func (s *BindingService) Unbind(ctx context.Context, req UnbindRequest) error {
 	return s.deps.Locker.WithWriteLock(ctx, func() error {
@@ -287,6 +323,10 @@ func (s *BindingService) Status(ctx context.Context, path string) (BindingStatus
 		RepoExists:        true,
 		MetadataPresent:   metadataPresent,
 		MetadataMatches:   metadataMatches,
+	}
+	if origin, ok := repo.RemoteByName("origin"); ok {
+		status.HasOrigin = true
+		status.OriginURL = origin.URL
 	}
 	if found {
 		status.Binding = binding

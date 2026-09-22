@@ -275,3 +275,46 @@ func TestPlainErrorTranslation(t *testing.T) {
 		t.Fatalf("translation = %q", got)
 	}
 }
+
+func TestBindAsksForRepositoryAddressWhenMissing(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+
+	// A repository without any remote: gitra must ask for the address instead
+	// of silently pushing nowhere.
+	dir := filepath.Join(t.TempDir(), "fresh-repo")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("git", "init", "-q")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+
+	model.startBind(*model.detailAccount, dir)
+	model, _ = press(t, model, "enter") // choose "使用这个文件夹"
+	if model.screen != screenRemote {
+		t.Fatalf("screen = %v, want remote address step", model.screen)
+	}
+	if !strings.Contains(model.bind.remoteURL, "github.com/luna/") {
+		t.Fatalf("prefilled address should target the account: %q", model.bind.remoteURL)
+	}
+	view := model.View()
+	if !strings.Contains(view, "还没有仓库地址") {
+		t.Fatalf("remote step must explain itself:\n%s", view)
+	}
+
+	// With an existing origin the flow binds directly.
+	repo := newRepoDir(t)
+	model.startBind(*model.detailAccount, repo)
+	model, _ = press(t, model, "enter")
+	if model.screen == screenRemote {
+		t.Fatal("existing origin must not trigger the address step")
+	}
+	if !model.busy {
+		t.Fatal("binding should have started")
+	}
+}

@@ -217,3 +217,19 @@ func listDirs(path string) ([]string, error) {
 	sort.Strings(dirs)
 	return dirs, nil
 }
+
+// remoteAndBindCommand adds a missing origin remote, then binds. Existing
+// remotes are never modified.
+func (m *Model) remoteAndBindCommand(account domain.Account, path, url string) tea.Cmd {
+	bindings := m.app.Bindings
+	return func() tea.Msg {
+		ctx := context.Background()
+		if err := bindings.EnsureOriginRemote(ctx, path, url); err != nil {
+			return bindDoneMsg{path: path, alias: account.Alias, err: err}
+		}
+		if _, err := bindings.Bind(ctx, app.BindRequest{AccountID: account.ID, Path: path}); err != nil {
+			return bindDoneMsg{path: path, alias: account.Alias, err: err}
+		}
+		return bindDoneMsg{path: path, alias: account.Alias}
+	}
+}
