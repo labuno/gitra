@@ -1,0 +1,168 @@
+{
+  "schema_version": 5,
+  "plan_id": "gitra-v1-tui",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/gitra-v1-tui-plan.md",
+  "traceability": "traceability.json",
+  "work_packages": [
+    "TUI-01",
+    "TUI-02",
+    "TUI-03"
+  ],
+  "nodes": [
+    {
+      "id": "TUI-01",
+      "title": "Shell & Navigation",
+      "work_packages": [
+        "TUI-01"
+      ],
+      "source_sections": [
+        "### TUI-01 Shell & Navigation",
+        "## Interfaces"
+      ],
+      "todo": "TUI-01-shell-navigation.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:tui-shell",
+          "kind": "tui",
+          "description": "模型/屏幕/卡片页/详情页/响应式布局"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/tui/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/tui/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        }
+      ]
+    },
+    {
+      "id": "TUI-02",
+      "title": "Flows & Onboarding",
+      "work_packages": [
+        "TUI-02"
+      ],
+      "source_sections": [
+        "### TUI-02 Flows & Onboarding",
+        "## Test Matrix"
+      ],
+      "todo": "TUI-02-flows-onboarding.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "TUI-01"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:tui-shell"
+      ],
+      "produces": [
+        {
+          "id": "artifact:tui-flows",
+          "kind": "tui",
+          "description": "登录向导/绑定向导/确认/引导/白话错误"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/tui/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/tui/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        }
+      ]
+    },
+    {
+      "id": "TUI-03",
+      "title": "Launch & Packaging",
+      "work_packages": [
+        "TUI-03"
+      ],
+      "source_sections": [
+        "### TUI-03 Launch & Packaging",
+        "## Done"
+      ],
+      "todo": "TUI-03-launch-packaging.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "TUI-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:tui-flows"
+      ],
+      "produces": [
+        {
+          "id": "artifact:tui-launch",
+          "kind": "cli",
+          "description": "无参数启动分流与双击启动器"
+        }
+      ],
+      "integration_gates": [
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:54:55+08:00"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "plan_id": "gitra-v1-tui",
+  "source_documents": [
+    {
+      "id": "plan",
+      "path": "docs/plans/gitra-v1-tui-plan.md",
+      "sha256": "bbc1673fb458e4c458d9b44acf3bd42305d2845ee73a8d8fbe2a268cc06d529c",
+      "role": "primary"
+    },
+    {
+      "id": "baseline",
+      "path": "docs/gitra-v1-implementation-baseline.md",
+      "sha256": "7518af20dc781fb25c8e2458e578852d6b843b6cceb6887805b8cb432713981f",
+      "role": "constraint"
+    },
+    {
+      "id": "design",
+      "path": "docs/gitra-architecture-development-design.md",
+      "sha256": "982b2f057e897572722b30b9255c0544f0be79845cd6ace307ee2c54323f958d",
+      "role": "constraint"
+    },
+    {
+      "id": "addendum",
+      "path": "docs/gitra-v1-login-onboarding-design.md",
+      "sha256": "11ca99027995416d9a7ff4492e19f8ccbe6a4673e9e185775b90e47ece04ddb9",
+      "role": "constraint"
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "objective",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-OBJ-01"
+      ],
+      "rationale": "objective 维度提取 1 条原子 Requirement。"
+    },
+    {
+      "id": "scope",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-SCOPE-01",
+        "REQ-SCOPE-02",
+        "REQ-SCOPE-03",
+        "REQ-SCOPE-04",
+        "REQ-SCOPE-05"
+      ],
+      "rationale": "scope 维度提取 5 条原子 Requirement。"
+    },
+    {
+      "id": "steps",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STEP-01",
+        "REQ-STEP-02",
+        "REQ-STEP-03"
+      ],
+      "rationale": "steps 维度提取 3 条原子 Requirement。"
+    },
+    {
+      "id": "interfaces",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-IF-01",
+        "REQ-IF-02",
+        "REQ-IF-03",
+        "REQ-IF-04"
+      ],
+      "rationale": "interfaces 维度提取 4 条原子 Requirement。"
+    },
+    {
+      "id": "work_packages",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-WP-01",
+        "REQ-WP-02",
+        "REQ-WP-03"
+      ],
+      "rationale": "work_packages 维度提取 3 条原子 Requirement。"
+    },
+    {
+      "id": "test_matrix",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-TEST-01",
+        "REQ-TEST-02",
+        "REQ-TEST-03",
+        "REQ-TEST-04"
+      ],
+      "rationale": "test_matrix 维度提取 4 条原子 Requirement。"
+    },
+    {
+      "id": "verification",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-VER-01"
+      ],
+      "rationale": "verification 维度提取 1 条原子 Requirement。"
+    },
+    {
+      "id": "done_criteria",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-DONE-01",
+        "REQ-DONE-02"
+      ],
+      "rationale": "done_criteria 维度提取 2 条原子 Requirement。"
+    },
+    {
+      "id": "stop_conditions",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STOP-01"
+      ],
+      "rationale": "stop_conditions 维度提取 1 条原子 Requirement。"
+    },
+    {
+      "id": "external_sources",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-EXT-01",
+        "REQ-EXT-02"
+      ],
+      "rationale": "external_sources 维度提取 2 条原子 Requirement。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-OBJ-01",
+      "kind": "objective",
+      "source_document": "plan",
+      "source_section": "## Objective",
+      "source_quote": "让完全不使用命令行的用户也能完成全部操作",
+      "statement": "TUI 覆盖登录/绑定/状态，双击即可启动。",
+      "verification": "TUI 测试 + 启动器",
+      "node_ids": [
+        "TUI-01",
+        "TUI-02",
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-01",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "账号卡片页（响应式多列）、账号详情页、登录向导、文件夹选择与绑定、确认对话框",
+      "statement": "五类界面能力齐备。",
+      "verification": "渲染与交互测试",
+      "node_ids": [
+        "TUI-01",
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-02",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "token 在界面中永不回显",
+      "statement": "访问码只以掩码显示。",
+      "verification": "掩码测试",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-03",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "首次启动引导",
+      "statement": "无账号时直接引导登录，登录后引导绑定。",
+      "verification": "引导测试",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-04",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Non-goals",
+      "source_quote": "目录树图形浏览（提供列表 + 手动输入路径）",
+      "statement": "文件夹选择用列表 + 手动输入。",
+      "verification": "文件夹选择测试",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-05",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "# 38. TUI Presentation Contract",
+      "source_quote": "TUI 只属于 Presentation Adapter。",
+      "statement": "TUI 不得直接访问 git/ssh/storage。",
+      "verification": "包依赖审查 + 编译",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-01",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "模型、屏幕切换、账号卡片与详情页导航",
+      "statement": "先完成外壳与导航。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-02",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "登录向导、文件夹选择与绑定、确认对话框、首次启动引导",
+      "statement": "其次完成流程与引导。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-STEP-03",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "启动路径（TUI/CLI 分流）与双击启动器；TUI 测试",
+      "statement": "最后完成启动与打包。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-01",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "tui.Run(app *bootstrap.App) error",
+      "statement": "入口签名固定。",
+      "verification": "编译与 main 调用",
+      "node_ids": [
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-02",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "AccountCard{ID, Provider, Alias, Host, AuthLabel, LocalState, ProjectCount}",
+      "statement": "视图模型字段固定。",
+      "verification": "渲染测试",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-03",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "columnsFor(width)",
+      "statement": "响应式列数算法固定。",
+      "verification": "列数测试",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-04",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "## 4.8 TUI 状态禁止依赖实时网络",
+      "source_quote": "TUI 首页只显示本地状态",
+      "statement": "启动不联网，仅显式操作联网。",
+      "verification": "启动代码审查 + 测试",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-01",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### TUI-01 Shell & Navigation",
+      "source_quote": "Bubble Tea 模型、账号卡片页与详情页、响应式列数、键盘导航与本地数据加载",
+      "statement": "WP TUI-01 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-02",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### TUI-02 Flows & Onboarding",
+      "source_quote": "登录向导、文件夹选择/绑定、确认对话框、首次登录后的绑定引导与错误白话化",
+      "statement": "WP TUI-02 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-03",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### TUI-03 Launch & Packaging",
+      "source_quote": "无参数启动 TUI（TTY 检测与回退）、`Gitra.command` 双击启动器、TUI 测试与文档",
+      "statement": "WP TUI-03 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-TEST-01",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "布局：不同终端宽度下的列数",
+      "statement": "列数有测试。",
+      "verification": "go test ./internal/presentation/tui/...",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-TEST-02",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "交互：登录向导三步骤与返回、账号导航与详情、确认对话框的确认/取消、文件夹选择器导航",
+      "statement": "交互有测试。",
+      "verification": "go test ./internal/presentation/tui/...",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-TEST-03",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "引导：首次登录后对未绑定仓库弹出绑定确认",
+      "statement": "引导有测试。",
+      "verification": "go test ./internal/presentation/tui/...",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-TEST-04",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "安全：访问码在界面中掩码、任何视图不出现 token",
+      "statement": "掩码有测试。",
+      "verification": "go test ./internal/presentation/tui/...",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-VER-01",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "每节点 `go test ./...` + `go vet ./...`；`go test ./internal/presentation/tui/...` 覆盖交互与渲染",
+      "statement": "Gate 全绿。",
+      "verification": "执行图证据",
+      "node_ids": [
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-DONE-01",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "用户双击 `Gitra.command` 后，只用键盘即可完成：登录 → 选择文件夹 → 绑定；无需输入任何命令",
+      "statement": "双击路径可用。",
+      "verification": "启动器存在且可执行 + 手工检查",
+      "node_ids": [
+        "TUI-03"
+      ]
+    },
+    {
+      "id": "REQ-DONE-02",
+      "kind": "done_criteria",
+      "source_document": "addendum",
+      "source_section": "## 6.1 首次启动（Onboarding，V1.2）",
+      "source_quote": "欢迎使用 gitra",
+      "statement": "无账号时展示欢迎与登录入口。",
+      "verification": "渲染测试",
+      "node_ids": [
+        "TUI-02"
+      ]
+    },
+    {
+      "id": "REQ-STOP-01",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要 TUI 直接访问 git/ssh/storage 才能实现（违反基线 §38）",
+      "statement": "架构边界不得破坏。",
+      "verification": "包依赖审查",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-01",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "Bubble Tea / Lip Gloss（基线 §19.2）",
+      "statement": "依赖已引入。",
+      "verification": "go.mod",
+      "node_ids": [
+        "TUI-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-02",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "macOS 双击 `.command` 启动行为",
+      "statement": "双击启动器可用。",
+      "verification": "文件权限与内容检查",
+      "node_ids": [
+        "TUI-03"
+      ]
+    }
+  ],
+  "review": {
+    "status": "PASS",
+    "unresolved_requirements": [],
+    "unjustified_nodes": [],
+    "reviewed_at": "2026-09-22T23:30:00+08:00"
+  }
+}

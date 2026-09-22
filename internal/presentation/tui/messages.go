@@ -1,0 +1,43 @@
+package tui
+
+// Messages exchanged between tea.Cmd work and the Update loop (baseline §40).
+type accountsLoadedMsg struct {
+	cards []AccountCard
+	err   error
+}
+
+type detailLoadedMsg struct {
+	account  *AccountCard
+	projects []Project
+	err      error
+}
+
+type loginDoneMsg struct {
+	alias    string
+	username string
+	host     string
+	created  bool
+	err      error
+}
+
+type bindDoneMsg struct {
+	path  string
+	alias string
+	err   error
+}
+
+type unbindDoneMsg struct {
+	path string
+	err  error
+}
+
+type verifyDoneMsg struct {
+	success bool
+	status  string
+	message string
+}
+
+type accountRemovedMsg struct {
+	alias string
+	err   error
+}
