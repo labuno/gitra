@@ -662,3 +662,106 @@ func TestAccountsScreenHasNoDecorativeAddRow(t *testing.T) {
 		t.Fatalf("help line must mention B:\n%s", model.View())
 	}
 }
+
+func TestWindowRangeKeepsSelectionVisible(t *testing.T) {
+	tests := []struct {
+		name             string
+		total, sel, size int
+		wantStart        int
+		wantEnd          int
+	}{
+		{"everything fits", 3, 2, 10, 0, 3},
+		{"top of a long list", 40, 0, 10, 0, 10},
+		{"middle", 40, 20, 10, 15, 25},
+		{"bottom", 40, 39, 10, 30, 40},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end := windowRange(tt.total, tt.sel, tt.size)
+			if start != tt.wantStart || end != tt.wantEnd {
+				t.Fatalf("windowRange(%d, %d, %d) = (%d, %d), want (%d, %d)",
+					tt.total, tt.sel, tt.size, start, end, tt.wantStart, tt.wantEnd)
+			}
+			if tt.sel < start || tt.sel >= end {
+				t.Fatalf("selection %d not visible in [%d, %d)", tt.sel, start, end)
+			}
+		})
+	}
+}
+
+func TestBindPickerScrollsToSelection(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+
+	// A folder with more subfolders than fit on a small screen.
+	root := t.TempDir()
+	for index := 0; index < 40; index++ {
+		if err := os.Mkdir(filepath.Join(root, fmt.Sprintf("dir-%02d", index)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	model.height = 20
+	model.startBind(*model.detailAccount, root)
+	if len(model.bind.entries) != 40 {
+		t.Fatalf("entries = %d, want 40", len(model.bind.entries))
+	}
+
+	// Walk to the bottom: the view must follow the cursor and say how many
+	// entries remain above.
+	for index := 0; index < 41; index++ {
+		model, _ = press(t, model, "down")
+	}
+	view := model.View()
+	if !strings.Contains(view, "> ") {
+		t.Fatalf("missing selection marker:\n%s", view)
+	}
+	if !strings.Contains(view, "上面还有") {
+		t.Fatalf("the view must indicate hidden entries above:\n%s", view)
+	}
+	if !strings.Contains(view, model.bind.entries[len(model.bind.entries)-1]) {
+		t.Fatalf("the last entry must be reachable and visible:\n%s", view)
+	}
+}
+
+func TestBindViewExplainsEnter(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+	model.startBind(*model.detailAccount, t.TempDir())
+
+	view := model.View()
+	if !strings.Contains(view, "回车 = 绑定当前文件夹") {
+		t.Fatalf("the picker must explain what Enter does:\n%s", view)
+	}
+	if !strings.Contains(view, "使用这个文件夹（回车＝绑定它）") {
+		t.Fatalf("the bind row must be labelled:\n%s", view)
+	}
+	if !strings.Contains(model.helpLine(), "在「使用这个文件夹」上＝绑定") {
+		t.Fatalf("help line = %q", model.helpLine())
+	}
+}
+
+func TestListDirsIncludesSymlinkedFolders(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "Documents")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, filepath.Join(root, "LinkedDocs")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	dirs, err := listDirs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]bool{}
+	for _, dir := range dirs {
+		found[dir] = true
+	}
+	if !found["Documents"] || !found["LinkedDocs"] {
+		t.Fatalf("listDirs = %v, want both real and symlinked folders", dirs)
+	}
+}

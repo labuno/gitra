@@ -15,6 +15,34 @@ const (
 	cardGap          = 2
 )
 
+// visibleRows is how many list rows fit on screen, leaving room for the
+// header, the status lines and the help bar.
+func (m Model) visibleRows() int {
+	rows := m.height - 12
+	if rows < 5 {
+		rows = 5
+	}
+	if rows > 30 {
+		rows = 30
+	}
+	return rows
+}
+
+// windowRange returns the slice of indices to render so the selected row is
+// always visible (a picker must never hide entries off-screen).
+func windowRange(total, selected, size int) (start, end int) {
+	if total <= size {
+		return 0, total
+	}
+	if selected < size/2 {
+		return 0, size
+	}
+	if selected > total-size/2-1 {
+		return total - size, total
+	}
+	return selected - size/2, selected - size/2 + size
+}
+
 // columnsFor implements the responsive card layout (baseline §42).
 func columnsFor(terminalWidth int) int {
 	usable := terminalWidth - 4
@@ -173,7 +201,13 @@ func (m Model) viewDetail() string {
 	if len(m.detailProjects) == 0 {
 		builder.WriteString("  （还没有）按 B 选择文件夹绑定\n")
 	}
-	for index, project := range m.detailProjects {
+	size := m.visibleRows() / 2
+	start, end := windowRange(len(m.detailProjects), m.detailSelected, size)
+	if start > 0 {
+		builder.WriteString(subtitleStyle.Render(fmt.Sprintf("↑ 上面还有 %d 个项目", start)) + "\n")
+	}
+	for index := start; index < end; index++ {
+		project := m.detailProjects[index]
 		marker := "  "
 		if index == m.detailSelected {
 			marker = "> "
@@ -185,6 +219,9 @@ func (m Model) viewDetail() string {
 		} else {
 			builder.WriteString(line)
 		}
+	}
+	if end < len(m.detailProjects) {
+		builder.WriteString(subtitleStyle.Render(fmt.Sprintf("↓ 下面还有 %d 个项目", len(m.detailProjects)-end)) + "\n")
 	}
 	return builder.String()
 }
@@ -292,6 +329,9 @@ func (m Model) loginHint() string {
 func (m Model) viewBind() string {
 	var builder strings.Builder
 	builder.WriteString("选择要绑定的项目文件夹\n\n")
+	builder.WriteString(subtitleStyle.Render(
+		"选子文件夹按回车 = 进入该文件夹；光标移到「使用这个文件夹」按回车 = 绑定当前文件夹。\n"+
+			"找不到目标时按 E 直接粘贴路径。") + "\n\n")
 	builder.WriteString("当前：")
 	if m.bind.manual {
 		builder.WriteString(accentStyle.Render(m.bind.path + "▌"))
@@ -303,17 +343,25 @@ func (m Model) viewBind() string {
 		builder.WriteString(subtitleStyle.Render("手动输入模式：输入路径后回车绑定，按 E 返回列表选择。") + "\n")
 		return builder.String()
 	}
-	options := append([]string{"✓ 使用这个文件夹", ".. （上一层）"}, m.bind.entries...)
-	for index, option := range options {
+	options := append([]string{"✓ 使用这个文件夹（回车＝绑定它）", ".. （上一层，也可以按 Esc 返回）"}, m.bind.entries...)
+	size := m.visibleRows()
+	start, end := windowRange(len(options), m.bind.selected, size)
+	if start > 0 {
+		builder.WriteString(subtitleStyle.Render(fmt.Sprintf("↑ 上面还有 %d 项", start)) + "\n")
+	}
+	for index := start; index < end; index++ {
 		marker := "  "
 		if index == m.bind.selected {
 			marker = "> "
 		}
 		if index == m.bind.selected {
-			builder.WriteString(menuSelected.Render(marker+option) + "\n")
+			builder.WriteString(menuSelected.Render(marker+options[index]) + "\n")
 		} else {
-			builder.WriteString(marker + option + "\n")
+			builder.WriteString(marker + options[index] + "\n")
 		}
+	}
+	if end < len(options) {
+		builder.WriteString(subtitleStyle.Render(fmt.Sprintf("↓ 下面还有 %d 项", len(options)-end)) + "\n")
 	}
 	return builder.String()
 }
@@ -344,7 +392,7 @@ func (m Model) helpLine() string {
 	case screenLogin:
 		return "↑↓ 选择   Enter 确认   Esc 返回"
 	case screenBind:
-		return "↑↓ 选择   Enter 打开/绑定   E 手动输入路径   Esc 返回"
+		return "↑↓ 移动   Enter 进入文件夹（在「使用这个文件夹」上＝绑定）   E 粘贴路径   Esc 返回"
 	case screenRemote:
 		return "输入/粘贴仓库地址   Enter 确认并绑定   Esc 返回"
 	case screenConfirm:

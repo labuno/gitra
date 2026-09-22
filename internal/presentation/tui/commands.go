@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -216,6 +217,11 @@ func (m *Model) startBind(account domain.Account, path string) {
 	m.screen = screenBind
 }
 
+// listDirs lists the selectable folders inside path.
+//
+// Entries are resolved with os.Stat so symlinked folders are included: on macOS
+// with iCloud "Desktop & Documents" sync enabled, ~/Desktop and ~/Documents are
+// symlinks, and a plain DirEntry.IsDir() would silently hide them.
 func listDirs(path string) ([]string, error) {
 	items, err := os.ReadDir(path)
 	if err != nil {
@@ -223,8 +229,16 @@ func listDirs(path string) ([]string, error) {
 	}
 	var dirs []string
 	for _, item := range items {
-		if item.IsDir() && !strings.HasPrefix(item.Name(), ".") {
-			dirs = append(dirs, item.Name())
+		name := item.Name()
+		if strings.HasPrefix(name, ".") {
+			continue // keep caches and config folders out of the way
+		}
+		if item.IsDir() {
+			dirs = append(dirs, name)
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(path, name)); err == nil && info.IsDir() {
+			dirs = append(dirs, name) // symlink to a folder
 		}
 	}
 	sort.Strings(dirs)
