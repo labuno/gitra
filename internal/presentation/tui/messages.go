@@ -13,11 +13,12 @@ type detailLoadedMsg struct {
 }
 
 type loginDoneMsg struct {
-	alias    string
-	username string
-	host     string
-	created  bool
-	err      error
+	alias     string
+	username  string
+	host      string
+	created   bool
+	usedToken bool
+	err       error
 }
 
 type bindDoneMsg struct {

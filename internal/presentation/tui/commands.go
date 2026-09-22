@@ -15,6 +15,20 @@ import (
 
 func (m *Model) ctx() context.Context { return context.Background() }
 
+// loginRequest builds the request for one login attempt.
+//
+// AllowStdin is always false in the TUI: the terminal is owned by Bubble Tea,
+// so reading stdin here would block the interface. The access code comes from
+// the masked input field instead.
+func loginRequest(provider domain.ProviderType, token string, allowCLI bool) app.LoginRequest {
+	return app.LoginRequest{
+		Provider:      provider,
+		Token:         token,
+		AllowStdin:    false,
+		AllowCLIReuse: allowCLI,
+	}
+}
+
 // loginCommand runs the provider login (explicit user action only).
 func (m *Model) loginCommand(provider domain.ProviderType, token string, allowCLI bool) tea.Cmd {
 	login := m.app.Login
@@ -22,11 +36,9 @@ func (m *Model) loginCommand(provider domain.ProviderType, token string, allowCL
 		if login == nil {
 			return loginDoneMsg{err: fmt.Errorf("登录功能不可用")}
 		}
-		result, err := login.Login(context.Background(), app.LoginRequest{
-			Provider: provider, Token: token, AllowStdin: token == "", AllowCLIReuse: allowCLI,
-		})
+		result, err := login.Login(context.Background(), loginRequest(provider, token, allowCLI))
 		if err != nil {
-			return loginDoneMsg{err: err}
+			return loginDoneMsg{err: err, usedToken: token != ""}
 		}
 		return loginDoneMsg{
 			alias: result.Account.Alias, username: result.Profile.Username,

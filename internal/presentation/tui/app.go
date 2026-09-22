@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case loginDoneMsg:
 		m.busy = false
 		if msg.err != nil {
-			m.errText = plainError(msg.err)
+			m.errText = loginErrorText(msg)
 			return m, nil
 		}
 		m.errText = ""
@@ -117,6 +118,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, nil
+}
+
+// loginErrorText turns a failed login into an actionable, TUI-friendly hint
+// (never a shell command).
+func loginErrorText(msg loginDoneMsg) string {
+	if errors.Is(msg.err, domain.ErrAuthInvalid) {
+		if msg.usedToken {
+			return "访问码无效或权限不足：请确认 token 权限包含 repo / read:user / user:email。"
+		}
+		return "本机没有可复用的登录：请选择「粘贴访问码」，或先在本机登录 gh 后重试。"
+	}
+	return plainError(msg.err)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

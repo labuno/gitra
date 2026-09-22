@@ -57,3 +57,10 @@
 - 验证：`./bin/gitra </dev/null`（非 TTY、无参数）输出帮助并退出 0；真实终端下 TUI 可启动、可导航、可干净退出；全量 Gate 通过。
 - Gates：`go test ./...`、`go vet ./...` 全 PASS。
 - Handoff：`artifact:tui-launch` 即用户入口：双击 `Gitra.command` → A 登录 → B 选文件夹绑定。
+
+## Amendment (2026-09-22) — 真实终端联调发现并修复的两个问题
+
+- **卡死修复**：TUI 的「复用 gh/glab」路径曾把 stdin 当作 token 来源，而终端被 Bubble Tea 接管，导致界面挂起。现在 `loginRequest()` 固定 `AllowStdin=false`（TUI 只用掩码输入框取访问码），并有单测锁定。
+- **外部命令超时**：gh/glab 探测增加 5 秒上限（`cliReuseTimeout`），避免网络/钥匙串阻塞界面；单测用「挂起 runner」验证有界返回。
+- **文案修复**：登录失败给出界面内可执行的动作（「请选择粘贴访问码」/「确认 token 权限」），不再出现任何终端命令。
+- 真实终端验证：`./bin/gitra` → `A` → 回车（gh 路径）→ 1 秒内返回可操作提示；`Ctrl+C` 干净退出。

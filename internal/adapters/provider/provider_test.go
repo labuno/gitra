@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
@@ -65,5 +66,28 @@ func TestTokenResolverExplainsHowToGetToken(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error must mention %q: %v", want, err)
 		}
+	}
+}
+
+type hangingRunner struct{}
+
+func (hangingRunner) Run(ctx context.Context, _ string, _ ...string) (ports.ProcessResult, error) {
+	<-ctx.Done()
+	return ports.ProcessResult{}, ctx.Err()
+}
+func (h hangingRunner) RunWithInput(ctx context.Context, name, _ string, args ...string) (ports.ProcessResult, error) {
+	return h.Run(ctx, name, args...)
+}
+
+func TestTokenResolverDoesNotHangOnCLIProbe(t *testing.T) {
+	resolver := NewTokenResolver(hangingRunner{}, strings.NewReader(""))
+	resolver.Getenv = func(string) string { return "" }
+	start := time.Now()
+	_, err := resolver.Resolve(context.Background(), TokenRequest{Provider: domain.ProviderGitHub, AllowCLIReuse: true})
+	if !errors.Is(err, domain.ErrAuthInvalid) {
+		t.Fatalf("error = %v, want ErrAuthInvalid", err)
+	}
+	if elapsed := time.Since(start); elapsed > 10*time.Second {
+		t.Fatalf("probe took %s, must be bounded", elapsed)
 	}
 }

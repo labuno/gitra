@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
@@ -20,6 +21,9 @@ import (
 // ErrProfileUnavailable marks provider failures that are not credential
 // problems: network errors, 5xx responses, malformed payloads.
 var ErrProfileUnavailable = errors.New("provider profile unavailable")
+
+// cliReuseTimeout bounds optional gh/glab probing.
+const cliReuseTimeout = 5 * time.Second
 
 // Profile is the provider account information used to auto-fill an account.
 type Profile struct {
@@ -87,6 +91,10 @@ func (r *TokenResolver) Resolve(ctx context.Context, req TokenRequest) (Token, e
 }
 
 func (r *TokenResolver) reuseCLI(ctx context.Context, providerType domain.ProviderType) (Token, error) {
+	// gh/glab can hang (network, locked keychain), and they are a convenience
+	// path only: bound the probe so the UI never freezes.
+	ctx, cancel := context.WithTimeout(ctx, cliReuseTimeout)
+	defer cancel()
 	switch providerType {
 	case domain.ProviderGitHub:
 		result, err := r.runner.Run(ctx, "gh", "auth", "token")

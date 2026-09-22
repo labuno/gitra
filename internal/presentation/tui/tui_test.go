@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -316,5 +317,30 @@ func TestBindAsksForRepositoryAddressWhenMissing(t *testing.T) {
 	}
 	if !model.busy {
 		t.Fatal("binding should have started")
+	}
+}
+
+func TestLoginRequestNeverReadsStdinInTUI(t *testing.T) {
+	request := loginRequest(domain.ProviderGitHub, "", true)
+	if request.AllowStdin {
+		t.Fatal("the TUI must never let the login path read stdin (Bubble Tea owns the terminal)")
+	}
+	if !request.AllowCLIReuse {
+		t.Fatal("the gh/glab reuse path should stay available")
+	}
+	withToken := loginRequest(domain.ProviderGitLab, "tok", false)
+	if withToken.Token != "tok" || withToken.AllowStdin {
+		t.Fatalf("request = %+v", withToken)
+	}
+}
+
+func TestLoginErrorMessagesAreActionable(t *testing.T) {
+	noCLI := loginErrorText(loginDoneMsg{err: fmt.Errorf("%w: no credential", domain.ErrAuthInvalid)})
+	if !strings.Contains(noCLI, "粘贴访问码") || strings.Contains(noCLI, "gitra ") {
+		t.Fatalf("hint = %q, must guide to the paste option without shell commands", noCLI)
+	}
+	badToken := loginErrorText(loginDoneMsg{err: fmt.Errorf("%w: rejected", domain.ErrAuthInvalid), usedToken: true})
+	if !strings.Contains(badToken, "权限") {
+		t.Fatalf("hint = %q, must explain token scopes", badToken)
 	}
 }
