@@ -100,7 +100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = action + "：" + msg.username + "（" + msg.host + "）"
 		m.screen = screenAccounts
 		m.loadAccounts()
-		return m, m.offerOnboardingBind(msg.alias)
+		return m, m.offerFirstProject(msg.alias)
 
 	case bindDoneMsg:
 		m.busy = false
@@ -148,6 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = ""
 			m.errText = "连接检查未通过：" + msg.message
 		}
+		return m, nil
+
+	case openBindPickerMsg:
+		m.startBind(msg.account, msg.path)
 		return m, nil
 
 	case quitConfirmedMsg:
@@ -259,6 +263,15 @@ func (m Model) handleAccountsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.message, m.errText = "", ""
 		m.login = loginState{}
 		m.screen = screenLogin
+	case "b":
+		if len(m.accounts) == 0 {
+			m.errText = "还没有账号，先按 A 登录一个。"
+			return m, nil
+		}
+		if account, ok := m.accountByID(m.accounts[m.selected].ID); ok {
+			m.message, m.errText = "", ""
+			m.startBind(account, suggestedBindDir())
+		}
 	case "t":
 		if len(m.accounts) == 0 {
 			m.errText = "还没有账号，先按 A 登录一个。"
@@ -623,27 +636,57 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// offerOnboardingBind guides a brand-new user: after the first successful
-// login, offer to bind the folder they launched gitra from.
-func (m *Model) offerOnboardingBind(alias string) tea.Cmd {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil
-	}
-	status, err := m.app.Bindings.Status(m.ctx(), cwd)
-	if err != nil || status.Bound {
-		return nil
-	}
+// offerFirstProject guides the user right after login: bind the folder they
+// launched gitra from when it is an unbound repository, otherwise ask whether
+// to pick a project folder now.
+func (m *Model) offerFirstProject(alias string) tea.Cmd {
 	account, err := m.app.Accounts.GetByAlias(m.ctx(), alias)
 	if err != nil {
 		return nil
 	}
-	repositoryPath := status.Repository
-	m.confirmPrompt = "检测到当前文件夹是一个 Git 仓库：\n\n" + repositoryPath +
-		"\n\n要把它绑定到 " + alias + " 吗？"
-	m.confirmAction = func() tea.Cmd { return m.bindCommand(account, repositoryPath) }
+
+	if cwd, err := os.Getwd(); err == nil {
+		if status, err := m.app.Bindings.Status(m.ctx(), cwd); err == nil && !status.Bound {
+			repositoryPath := status.Repository
+			m.confirmPrompt = "检测到当前文件夹是一个 Git 仓库：\n\n" + repositoryPath +
+				"\n\n要把它绑定到 " + alias + " 吗？"
+			m.confirmAction = func() tea.Cmd { return m.bindCommand(account, repositoryPath) }
+			m.screen = screenConfirm
+			return nil
+		}
+	}
+
+	m.confirmPrompt = "已登录 " + alias + "。\n\n要现在添加一个项目吗？\n" +
+		"（也可以稍后按 B 选择文件夹绑定）"
+	start := suggestedBindDir()
+	m.confirmAction = func() tea.Cmd {
+		return func() tea.Msg {
+			return openBindPickerMsg{account: account, path: start}
+		}
+	}
 	m.screen = screenConfirm
 	return nil
+}
+
+// openBindPickerMsg opens the folder picker for one account.
+type openBindPickerMsg struct {
+	account domain.Account
+	path    string
+}
+
+// suggestedBindDir picks a friendly starting folder for the picker.
+func suggestedBindDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/"
+	}
+	for _, candidate := range []string{"Projects", "projects", "code", "Developer", "Documents"} {
+		path := filepath.Join(home, candidate)
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			return path
+		}
+	}
+	return home
 }
 
 var _ = app.DeleteAccountRequest{}

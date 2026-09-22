@@ -104,8 +104,7 @@ func (m Model) viewAccounts() string {
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, cards...))
 	}
 	body := lipgloss.JoinVertical(lipgloss.Left, rows...)
-	body += "\n" + subtitleStyle.Render("[+ 添加账号]") + "\n"
-	return body
+	return body + "\n"
 }
 
 // welcomeItem is one entry of the first-run menu.
@@ -339,7 +338,7 @@ func (m Model) helpLine() string {
 		if len(m.accounts) == 0 {
 			return "↑↓ 选择   Enter 确认   Q 退出"
 		}
-		return "↑↓←→ 选择   Enter 打开   A 添加账号   T 测试连接   Q 退出"
+		return "↑↓←→ 选择   Enter 打开   A 添加账号   B 绑定项目   T 测试连接   Q 退出"
 	case screenDetail:
 		return "↑↓ 选择项目   B 绑定文件夹   D 解除绑定   T 测试连接   R 修复配置   X 删除账号   Esc 返回"
 	case screenLogin:

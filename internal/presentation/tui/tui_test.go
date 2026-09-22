@@ -609,3 +609,56 @@ func TestBrowserLoginResumesIntoCLISession(t *testing.T) {
 		t.Fatal("expected a login command")
 	}
 }
+
+func TestLoginOffersToAddProjectAnywhere(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	// Launch from a folder that is not a repository (like the app bundle does).
+	t.Chdir(t.TempDir())
+	model.loadAccounts()
+
+	updated, _ := model.Update(loginDoneMsg{alias: "luna", username: "labuno", host: "github.com", created: false})
+	model = updated.(Model)
+	if model.screen != screenConfirm {
+		t.Fatalf("after login the user must be asked about the first project, screen=%v", model.screen)
+	}
+	if !strings.Contains(model.confirmPrompt, "要现在添加一个项目吗") {
+		t.Fatalf("prompt = %q", model.confirmPrompt)
+	}
+
+	// Confirming opens the folder picker for that account.
+	model, cmd := press(t, model, "y")
+	model = runCmd(t, model, cmd)
+	if model.screen != screenBind {
+		t.Fatalf("confirming must open the folder picker, screen=%v", model.screen)
+	}
+	if model.bind.account.Alias != "luna" {
+		t.Fatalf("picker bound to %q, want luna", model.bind.account.Alias)
+	}
+}
+
+func TestBindKeyOnAccountsScreen(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+
+	model, _ = press(t, model, "b")
+	if model.screen != screenBind {
+		t.Fatalf("B must open the folder picker for the selected account, screen=%v", model.screen)
+	}
+	if model.bind.path == "" {
+		t.Fatal("picker must start in a real folder")
+	}
+}
+
+func TestAccountsScreenHasNoDecorativeAddRow(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	if strings.Contains(model.View(), "[+ 添加账号]") {
+		t.Fatalf("the decorative add row must be gone (A is the documented entry):\n%s", model.View())
+	}
+	if !strings.Contains(model.View(), "B 绑定项目") {
+		t.Fatalf("help line must mention B:\n%s", model.View())
+	}
+}
