@@ -1,0 +1,510 @@
+{
+  "schema_version": 5,
+  "plan_id": "gitra-v1-core",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/gitra-v1-core-plan.md",
+  "traceability": "traceability.json",
+  "work_packages": [
+    "WP-01",
+    "WP-02",
+    "WP-03",
+    "WP-04",
+    "WP-05",
+    "WP-06",
+    "WP-07",
+    "WP-08",
+    "WP-09"
+  ],
+  "nodes": [
+    {
+      "id": "V1C-01",
+      "title": "Toolchain & Repository Bootstrap",
+      "work_packages": [
+        "WP-01"
+      ],
+      "source_sections": [
+        "### WP-01 Toolchain & Repository Bootstrap",
+        "## Steps"
+      ],
+      "todo": "V1C-01-workspace-bootstrap.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:workspace",
+          "kind": "workspace",
+          "description": "可构建的 Go module + cmd/gitra 入口 + internal 包骨架"
+        }
+      ],
+      "integration_gates": [
+        "go build ./...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go build ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:01:10+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:01:10+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:01:10+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-02",
+      "title": "Domain Model & Invariants",
+      "work_packages": [
+        "WP-02"
+      ],
+      "source_sections": [
+        "### WP-02 Domain Model & Invariants",
+        "## Interfaces"
+      ],
+      "todo": "V1C-02-domain-model.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-01"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:workspace"
+      ],
+      "produces": [
+        {
+          "id": "artifact:domain-model",
+          "kind": "domain",
+          "description": "domain 类型、不变式与 typed errors"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/domain/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/domain/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:09+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:09+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:09+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-03",
+      "title": "Ports & Boundaries",
+      "work_packages": [
+        "WP-03"
+      ],
+      "source_sections": [
+        "### WP-03 Ports & Boundaries",
+        "## Interfaces"
+      ],
+      "todo": "V1C-03-ports-and-boundaries.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:domain-model"
+      ],
+      "produces": [
+        {
+          "id": "artifact:ports",
+          "kind": "api",
+          "description": "Git/SSH/Runner/Store/Locker/Clock 端口与边界检查"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/ports/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/ports/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:41+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:41+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:02:41+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-04",
+      "title": "Git CLI Adapter",
+      "work_packages": [
+        "WP-04"
+      ],
+      "source_sections": [
+        "### WP-04 Git CLI Adapter",
+        "## Steps"
+      ],
+      "todo": "V1C-04-git-cli-adapter.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-03"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:ports"
+      ],
+      "produces": [
+        {
+          "id": "artifact:git-adapter",
+          "kind": "adapter",
+          "description": "CommandRunner 与 GitCLIAdapter（真实 git 集成测试）"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/adapters/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/adapters/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-05",
+      "title": "Persistence & Locking",
+      "work_packages": [
+        "WP-05"
+      ],
+      "source_sections": [
+        "### WP-05 Persistence & Locking",
+        "## Interfaces"
+      ],
+      "todo": "V1C-05-persistence-and-locking.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-03"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:ports"
+      ],
+      "produces": [
+        {
+          "id": "artifact:stores",
+          "kind": "storage",
+          "description": "AccountStore/BindingStore JSON 实现、原子写、文件锁"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/adapters/storage/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/adapters/storage/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-06",
+      "title": "Strategies (SSH Key / Repo-Local)",
+      "work_packages": [
+        "WP-06"
+      ],
+      "source_sections": [
+        "### WP-06 Strategies (SSH Key / Repo-Local)",
+        "## Interfaces"
+      ],
+      "todo": "V1C-06-strategies.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-03"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:ports",
+        "artifact:domain-model"
+      ],
+      "produces": [
+        {
+          "id": "artifact:strategies",
+          "kind": "strategy",
+          "description": "ssh-key Auth Strategy、repo-local Routing Strategy 与注册表"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/strategies/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/strategies/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:14:00+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-07",
+      "title": "Binding Lifecycle (Snapshot / Bind / Unbind / Status)",
+      "work_packages": [
+        "WP-07"
+      ],
+      "source_sections": [
+        "### WP-07 Binding Lifecycle",
+        "## Steps"
+      ],
+      "todo": "V1C-07-binding-lifecycle.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-04",
+        "V1C-05",
+        "V1C-06"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:git-adapter",
+        "artifact:stores",
+        "artifact:strategies"
+      ],
+      "produces": [
+        {
+          "id": "artifact:binding-service",
+          "kind": "service",
+          "description": "BindingService（bind/unbind/status）与 Snapshot/Rollback"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/app/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/app/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-08",
+      "title": "Reconciliation & Health",
+      "work_packages": [
+        "WP-08"
+      ],
+      "source_sections": [
+        "### WP-08 Reconciliation & Health",
+        "## Verification"
+      ],
+      "todo": "V1C-08-reconciliation-and-health.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-07"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:binding-service"
+      ],
+      "produces": [
+        {
+          "id": "artifact:reconciler",
+          "kind": "service",
+          "description": "Reconciler（健康度/漂移修复/账号级传播）"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/app/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/app/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:23+08:00"
+        }
+      ]
+    },
+    {
+      "id": "V1C-09",
+      "title": "Dual-Account E2E & Regression",
+      "work_packages": [
+        "WP-09"
+      ],
+      "source_sections": [
+        "### WP-09 Dual-Account E2E & Regression",
+        "## Verification",
+        "## Done"
+      ],
+      "todo": "V1C-09-dual-account-e2e.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "V1C-08"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:reconciler"
+      ],
+      "produces": [
+        {
+          "id": "artifact:isolation-e2e",
+          "kind": "e2e",
+          "description": "双账号双仓库隔离回归与全量 Gate"
+        }
+      ],
+      "integration_gates": [
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:49+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:16:49+08:00"
+        }
+      ]
+    }
+  ]
+}

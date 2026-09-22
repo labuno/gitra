@@ -1,0 +1,717 @@
+{
+  "schema_version": 1,
+  "plan_id": "gitra-v1-core",
+  "source_documents": [
+    {
+      "id": "plan",
+      "path": "docs/plans/gitra-v1-core-plan.md",
+      "sha256": "15e36a985beff4b572ef0433df1f2ff6b1fba6caea2ce352bc8261916cc9a90f",
+      "role": "primary"
+    },
+    {
+      "id": "baseline",
+      "path": "docs/gitra-v1-implementation-baseline.md",
+      "sha256": "7518af20dc781fb25c8e2458e578852d6b843b6cceb6887805b8cb432713981f",
+      "role": "constraint"
+    },
+    {
+      "id": "design",
+      "path": "docs/gitra-architecture-development-design.md",
+      "sha256": "982b2f057e897572722b30b9255c0544f0be79845cd6ace307ee2c54323f958d",
+      "role": "constraint"
+    },
+    {
+      "id": "addendum",
+      "path": "docs/gitra-v1-login-onboarding-design.md",
+      "sha256": "11ca99027995416d9a7ff4492e19f8ccbe6a4673e9e185775b90e47ece04ddb9",
+      "role": "constraint"
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "objective",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-OBJ-01",
+        "REQ-OBJ-02"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 2 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "scope",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-SCOPE-01",
+        "REQ-SCOPE-02",
+        "REQ-SCOPE-03",
+        "REQ-SCOPE-04",
+        "REQ-SCOPE-05",
+        "REQ-SCOPE-06"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 6 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "steps",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STEP-01",
+        "REQ-STEP-02",
+        "REQ-STEP-03",
+        "REQ-STEP-04"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 4 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "interfaces",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-IF-01",
+        "REQ-IF-02",
+        "REQ-IF-03",
+        "REQ-IF-04",
+        "REQ-IF-05",
+        "REQ-IF-06",
+        "REQ-IF-07",
+        "REQ-IF-08",
+        "REQ-IF-09"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 9 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "work_packages",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-WP-01",
+        "REQ-WP-02",
+        "REQ-WP-03",
+        "REQ-WP-04",
+        "REQ-WP-05",
+        "REQ-WP-06",
+        "REQ-WP-07",
+        "REQ-WP-08",
+        "REQ-WP-09"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 9 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "test_matrix",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-TEST-01",
+        "REQ-TEST-02",
+        "REQ-TEST-03",
+        "REQ-TEST-04",
+        "REQ-TEST-05"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 5 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "verification",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-VER-01",
+        "REQ-VER-02",
+        "REQ-VER-03"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 3 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "done_criteria",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-DONE-04",
+        "REQ-DONE-01",
+        "REQ-DONE-02",
+        "REQ-DONE-03"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 4 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "stop_conditions",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STOP-01",
+        "REQ-STOP-02"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 2 条原子 Requirement，并映射到执行节点。"
+    },
+    {
+      "id": "external_sources",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-EXT-01",
+        "REQ-EXT-02"
+      ],
+      "rationale": "该维度已从固定源文档中提取为 2 条原子 Requirement，并映射到执行节点。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-OBJ-01",
+      "kind": "objective",
+      "source_document": "plan",
+      "source_section": "## Objective",
+      "source_quote": "交付 gitra V1.0 core",
+      "statement": "交付 Domain/Ports/Storage/Adapters/Strategies/BindingService/Reconciler 的可运行实现，并以双账号双仓库 E2E 证明身份隔离。",
+      "verification": "V1C-09 的 E2E Gate 全绿 + 执行图节点均为验证成功",
+      "node_ids": [
+        "V1C-01",
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-OBJ-02",
+      "kind": "objective",
+      "source_document": "baseline",
+      "source_section": "# 60. V1 最终 Definition of Done",
+      "source_quote": "- `git push/pull/fetch` 不依赖 gitra 进程",
+      "statement": "绑定完成后原生 Git 操作不依赖 gitra 进程即可使用正确身份。",
+      "verification": "E2E 断言仅读取 repo-local 配置与系统凭据，不启动 gitra 进程",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-01",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "覆盖基线 §45 Milestone 0 与 §46 Milestone 1 的全部范围",
+      "statement": "本 Plan 只覆盖 Milestone 0 与 Milestone 1，CLI/TUI/联网验证/登录不属于本 Plan。",
+      "verification": "执行图 Work Package 覆盖 WP-01..WP-09，无 CLI/TUI 节点",
+      "node_ids": [
+        "V1C-01",
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-02",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Non-goals",
+      "source_quote": "自动修改 remote URL、自动 clone、SSH key 生成或上传",
+      "statement": "禁止自动修改 remote URL、自动 clone、生成或上传 SSH key。",
+      "verification": "代码与测试审查 + E2E 断言 remote URL 前后不变",
+      "node_ids": [
+        "V1C-01",
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-03",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "## 4.2 认证路径：HTTPS 为主，SSH 为高级选项",
+      "source_quote": "V1.0 core 仍以 SSH 验证核心投影机制",
+      "statement": "V1.0 core 仅支持 SSH remote；HTTPS remote 必须明确报错，不得静默转换。",
+      "verification": "单元测试覆盖 HTTPS remote 拒绝路径",
+      "node_ids": [
+        "V1C-06"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-04",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "# 10. Repository Metadata",
+      "source_quote": "存 AccountID，不存 Alias 作为主引用。",
+      "statement": "仓库元数据与绑定记录以 AccountID 为引用，不得以 Alias 作为主引用。",
+      "verification": "存储层单测断言文件名与 binding 字段使用 AccountID",
+      "node_ids": [
+        "V1C-05"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-05",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "# 7. Bind 明确不做的事",
+      "source_quote": "- 修改 remote URL",
+      "statement": "Bind 不得修改 remote URL。",
+      "verification": "E2E 断言 bind 前后 remote URL 逐字不变",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-STEP-01",
+      "kind": "steps",
+      "source_document": "baseline",
+      "source_section": "# 58. 推荐最终开发顺序",
+      "source_quote": "1. Domain",
+      "statement": "开发顺序必须为 Domain → Ports → Storage → CommandRunner → Git Adapter → Strategy → Binding → E2E。",
+      "verification": "执行图 depends_on 链与该顺序一致",
+      "node_ids": [
+        "V1C-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-02",
+      "kind": "steps",
+      "source_document": "baseline",
+      "source_section": "# 6. Bind 行为契约",
+      "source_quote": "固定流程：",
+      "statement": "Bind 必须按固定顺序执行（解析账号→发现仓库→校验→快照→投影→写入→读回验证），任何一步失败都要回滚。",
+      "verification": "故障注入单测覆盖每个写入步骤的回滚",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-STEP-03",
+      "kind": "steps",
+      "source_document": "baseline",
+      "source_section": "# 8. Unbind 行为契约",
+      "source_quote": "Unbind 恢复“绑定前状态”，而不是简单删除配置。",
+      "statement": "Unbind 依据快照恢复绑定前状态。",
+      "verification": "E2E 断言恢复值与绑定前逐 key 相等",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-STEP-04",
+      "kind": "steps",
+      "source_document": "baseline",
+      "source_section": "# 12. Reconcile 行为契约",
+      "source_quote": "Reconcile 只能修改 gitra ownership 范围内的 key。",
+      "statement": "Reconcile 只能修改受管白名单内的 key。",
+      "verification": "单测断言非受管 key 在 reconcile 前后不变",
+      "node_ids": [
+        "V1C-08"
+      ]
+    },
+    {
+      "id": "REQ-IF-01",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 27. Git Port Baseline",
+      "source_quote": "DiscoverRepository(",
+      "statement": "Git 端口方法签名以基线 §27 为准，实现不得擅改。",
+      "verification": "ports 编译期 fake 断言 + adapter 实现",
+      "node_ids": [
+        "V1C-03",
+        "V1C-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-02",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 28. Storage 基线",
+      "source_quote": "os.UserConfigDir()/gitra",
+      "statement": "配置目录为 os.UserConfigDir()/gitra，并支持 GITRA_CONFIG_DIR 覆盖用于隔离测试。",
+      "verification": "存储层测试断言两种路径解析",
+      "node_ids": [
+        "V1C-03",
+        "V1C-05"
+      ]
+    },
+    {
+      "id": "REQ-IF-03",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 34. 错误模型基线",
+      "source_quote": "必须区分：",
+      "statement": "错误必须按 User/Environment/External Process/State Conflict 等类别区分，并使用 typed sentinel errors。",
+      "verification": "domain 单测断言 sentinel 可被 errors.Is 匹配",
+      "node_ids": [
+        "V1C-02"
+      ]
+    },
+    {
+      "id": "REQ-IF-04",
+      "kind": "interfaces",
+      "source_document": "addendum",
+      "source_section": "# 11. 对 V1.0 基线的修订清单（9 条硬约束逐条）",
+      "source_quote": "github.com/zhanhd/gitra",
+      "statement": "命名冻结：module github.com/zhanhd/gitra、二进制 gitra、Git 段 [gitra]、仓库元数据 <GitDir>/gitra/。",
+      "verification": "bootstrap 单测与人工检查",
+      "node_ids": [
+        "V1C-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-05",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "## 4.5 禁止假设 `.git` 一定是目录",
+      "source_quote": "git -C <path> rev-parse --absolute-git-dir",
+      "statement": "Repository 模型必须包含 GitDir，且通过 rev-parse 获取，禁止硬编码 .git 目录。",
+      "verification": "Git adapter 集成测试断言 GitDir 来源",
+      "node_ids": [
+        "V1C-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-06",
+      "kind": "interfaces",
+      "source_document": "design",
+      "source_section": "# 18. Strategy 设计",
+      "source_quote": "type AuthStrategy interface {",
+      "statement": "Auth/Routing 必须通过 Strategy 接口与注册表扩展，禁止业务层 if/else 分支。",
+      "verification": "注册表单测 + 代码审查",
+      "node_ids": [
+        "V1C-06"
+      ]
+    },
+    {
+      "id": "REQ-IF-07",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 9. Managed State Ownership",
+      "source_quote": "core.sshCommand",
+      "statement": "受管 key 白名单固定为 user.name/user.email/core.sshCommand/gitra.*，其余一律不碰。",
+      "verification": "routing 单测断言写入 key 集合恰好等于白名单",
+      "node_ids": [
+        "V1C-06",
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-IF-08",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "## 4.1 Account ID 与 Alias 必须分离",
+      "source_quote": "AccountID 是持久身份；Alias 只是人类可读标识。",
+      "statement": "Binding 必须引用稳定的 AccountID；Alias 可修改且不得作为主引用。",
+      "verification": "domain 单测与存储单测断言引用 AccountID",
+      "node_ids": [
+        "V1C-02"
+      ]
+    },
+    {
+      "id": "REQ-IF-09",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "## 4.9 Path Canonicalization 必须统一",
+      "source_quote": "git -C <path> rev-parse --show-toplevel",
+      "statement": "Repository path 必须 canonical 化为 git 认可的 root，BindingStore 只保存 canonical root。",
+      "verification": "Git adapter 集成测试覆盖子目录与符号链接输入",
+      "node_ids": [
+        "V1C-04"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-06",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "## 4.7 Remote Owner 不等于 Account Username",
+      "source_quote": "remote owner == account username",
+      "statement": "Bind 不得把 remote owner 与账号 username 相等作为合法性条件。",
+      "verification": "绑定流程单测覆盖 owner 与 username 不同的仓库",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-DONE-04",
+      "kind": "done_criteria",
+      "source_document": "baseline",
+      "source_section": "# 13. Binding Health",
+      "source_quote": "Repository 存在，但 gitra 管理字段被外部修改。",
+      "statement": "受管字段被外部修改必须表现为 DRIFT 健康度。",
+      "verification": "Reconciler 单测覆盖 drift 真值表",
+      "node_ids": [
+        "V1C-08"
+      ]
+    },
+    {
+      "id": "REQ-WP-01",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-01 Toolchain & Repository Bootstrap",
+      "source_quote": "go.mod、cmd/gitra、internal 目录骨架",
+      "statement": "WP-01：完成 module、入口与目录骨架。",
+      "verification": "V1C-01 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-02",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-02 Domain Model & Invariants",
+      "source_quote": "Account、AccountID、ProviderRef、ProviderEndpoint",
+      "statement": "WP-02：完成领域模型与不变式。",
+      "verification": "V1C-02 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-03",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-03 Ports & Boundaries",
+      "source_quote": "Git、SSH、CommandRunner、AccountStore、BindingStore、Locker、Clock 等接口",
+      "statement": "WP-03：完成端口定义与依赖方向约束。",
+      "verification": "V1C-03 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-03"
+      ]
+    },
+    {
+      "id": "REQ-WP-04",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-04 Git CLI Adapter",
+      "source_quote": "DiscoverRepository（RootPath / GitDir / bare / worktree 判定）",
+      "statement": "WP-04：完成 Git adapter 与统一执行器。",
+      "verification": "V1C-04 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-04"
+      ]
+    },
+    {
+      "id": "REQ-WP-05",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-05 Persistence & Locking",
+      "source_quote": "原子写（temp+fsync+rename）",
+      "statement": "WP-05：完成 JSON 持久化、原子写与文件锁。",
+      "verification": "V1C-05 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-05"
+      ]
+    },
+    {
+      "id": "REQ-WP-06",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-06 Strategies (SSH Key / Repo-Local)",
+      "source_quote": "RepoLocalRoutingStrategy（投影与恢复）",
+      "statement": "WP-06：完成 ssh-key 与 repo-local 策略及注册表。",
+      "verification": "V1C-06 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-06"
+      ]
+    },
+    {
+      "id": "REQ-WP-07",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-07 Binding Lifecycle",
+      "source_quote": "Snapshot、Rollback、Bind 固定流程",
+      "statement": "WP-07：完成绑定生命周期（快照/绑定/回滚/解绑/状态）。",
+      "verification": "V1C-07 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-WP-08",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-08 Reconciliation & Health",
+      "source_quote": "Desired / Applied 对比、DRIFT 检测与修复",
+      "statement": "WP-08：完成 RECONCILE 与健康度。",
+      "verification": "V1C-08 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-08"
+      ]
+    },
+    {
+      "id": "REQ-WP-09",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### WP-09 Dual-Account E2E & Regression",
+      "source_quote": "双账号双仓库隔离用例",
+      "statement": "WP-09：完成 E2E 与全量回归 Gate。",
+      "verification": "V1C-09 节点 Gates 全绿",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-TEST-01",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.1 Domain Unit Test",
+      "source_quote": "Alias validation",
+      "statement": "Domain 单测必须覆盖 AccountID、Alias 校验、Endpoint 校验、Transport 校验与健康度。",
+      "verification": "internal/domain 表驱动测试",
+      "node_ids": [
+        "V1C-02"
+      ]
+    },
+    {
+      "id": "REQ-TEST-02",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.2 Application Unit Test",
+      "source_quote": "FakeAccountStore",
+      "statement": "Application 单测必须使用 Fake store/Git/Locker 覆盖 Create/Bind/Unbind/Reconcile/Rollback。",
+      "verification": "internal/app 单测使用 fakes",
+      "node_ids": [
+        "V1C-05",
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-TEST-03",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.3 Git Adapter Integration Test",
+      "source_quote": "git init",
+      "statement": "Git adapter 必须在真实临时仓库上做集成测试。",
+      "verification": "internal/adapters/gitcli 集成测试",
+      "node_ids": [
+        "V1C-04"
+      ]
+    },
+    {
+      "id": "REQ-TEST-04",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.6 Rollback Test",
+      "source_quote": "至少模拟：",
+      "statement": "必须模拟部分写入成功后 store 失败并断言仓库恢复原状。",
+      "verification": "故障注入单测",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-TEST-05",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.7 双账号双仓库 E2E",
+      "source_quote": "这是 V1 最重要的长期 regression test。",
+      "statement": "双账号双仓库 E2E 必须永久保留。",
+      "verification": "internal/e2e 测试",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-VER-01",
+      "kind": "verification",
+      "source_document": "baseline",
+      "source_section": "## 核心 E2E",
+      "source_quote": "git -C repo-a config --local user.email",
+      "statement": "验收必须直接断言两个仓库的 local user.email 与 core.sshCommand 不同。",
+      "verification": "E2E 断言",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-VER-02",
+      "kind": "verification",
+      "source_document": "baseline",
+      "source_section": "# 45. Milestone 0 - Skeleton",
+      "source_quote": "go test ./...",
+      "statement": "每个节点必须通过 go test 与 go vet。",
+      "verification": "节点 Gates",
+      "node_ids": [
+        "V1C-01",
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-VER-03",
+      "kind": "verification",
+      "source_document": "design",
+      "source_section": "# 12. 为什么使用 core.sshCommand",
+      "source_quote": "Repository 自包含。",
+      "statement": "绑定后仓库自包含：身份由 repo-local 配置决定，不依赖全局状态。",
+      "verification": "E2E 断言全局配置未变化且仓库内配置生效",
+      "node_ids": [
+        "V1C-06"
+      ]
+    },
+    {
+      "id": "REQ-DONE-01",
+      "kind": "done_criteria",
+      "source_document": "baseline",
+      "source_section": "# 52. Definition of Done",
+      "source_quote": "Rollback Test 通过",
+      "statement": "Binding 类功能完成必须包含 Rollback 测试通过。",
+      "verification": "执行图证据",
+      "node_ids": [
+        "V1C-07",
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-DONE-02",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "无跨层依赖污染",
+      "statement": "完成时必须无跨层依赖污染。",
+      "verification": "边界检查测试",
+      "node_ids": [
+        "V1C-03"
+      ]
+    },
+    {
+      "id": "REQ-DONE-03",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "Artifact 与 Gate 证据入图",
+      "statement": "完成时 Artifact 与 Gate 证据必须写入执行图。",
+      "verification": "校验器通过",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-STOP-01",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "基线文档与实现事实冲突",
+      "statement": "源文档与实现事实冲突时必须停止并上报，不得静默偏离。",
+      "verification": "执行记录",
+      "node_ids": [
+        "V1C-07"
+      ]
+    },
+    {
+      "id": "REQ-STOP-02",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "测试基础设施无法安全建立",
+      "statement": "测试基础设施无法安全建立时必须停止。",
+      "verification": "执行记录",
+      "node_ids": [
+        "V1C-09"
+      ]
+    },
+    {
+      "id": "REQ-EXT-01",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "Go 1.25",
+      "statement": "工具链为 Go 1.25。",
+      "verification": "go.mod 与本地 go version",
+      "node_ids": [
+        "V1C-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-02",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "系统 git（开发机 2.49.0）",
+      "statement": "依赖系统 git 可执行文件；缺失时停止。",
+      "verification": "adapter 集成测试运行时检查",
+      "node_ids": [
+        "V1C-04"
+      ]
+    }
+  ],
+  "review": {
+    "status": "PASS",
+    "unresolved_requirements": [],
+    "unjustified_nodes": [],
+    "reviewed_at": "2026-09-22T19:30:00+08:00"
+  }
+}
