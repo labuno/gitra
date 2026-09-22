@@ -112,17 +112,16 @@ func TestColumnsFor(t *testing.T) {
 
 func TestLoginWizardStepsAndMasking(t *testing.T) {
 	model, _ := newTestModel(t)
-	model, _ = press(t, model, "a")
-	if model.screen != screenLogin || model.login.step != 0 {
-		t.Fatalf("screen=%v step=%d", model.screen, model.login.step)
-	}
+	// First run shows a menu; choosing GitLab must carry the provider over.
 	model, _ = press(t, model, "down")
-	if model.login.providerIndex != 1 {
-		t.Fatalf("providerIndex = %d, want 1", model.login.providerIndex)
-	}
 	model, _ = press(t, model, "enter")
-	if model.login.step != 1 {
-		t.Fatalf("step = %d, want method selection", model.login.step)
+	if model.screen != screenLogin || model.login.step != 1 || model.login.providerIndex != 1 {
+		t.Fatalf("screen=%v step=%d provider=%d", model.screen, model.login.step, model.login.providerIndex)
+	}
+	// "A" jumps straight to the login method step (GitHub preselected).
+	model, _ = press(t, model, "a")
+	if model.screen != screenLogin || model.login.step != 1 {
+		t.Fatalf("A shortcut: screen=%v step=%d", model.screen, model.login.step)
 	}
 	model, _ = press(t, model, "down")
 	model, _ = press(t, model, "enter")
@@ -149,15 +148,17 @@ func TestLoginWizardStepsAndMasking(t *testing.T) {
 	}
 }
 
-func TestEmptyStateGuidesToLogin(t *testing.T) {
+func TestEmptyStateShowsSelectableMenu(t *testing.T) {
 	model, _ := newTestModel(t)
 	view := model.View()
-	if !strings.Contains(view, "欢迎使用 gitra") || !strings.Contains(view, "按 A 登录") {
-		t.Fatalf("empty state must guide the user to log in:\n%s", view)
+	for _, want := range []string{"欢迎使用 gitra", "登录 GitHub", "登录 GitLab", "登录 Gitea", "退出"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("welcome menu must show %q:\n%s", want, view)
+		}
 	}
 	model, _ = press(t, model, "enter")
-	if model.screen != screenLogin {
-		t.Fatalf("Enter on the welcome screen should start login, got %v", model.screen)
+	if model.screen != screenLogin || model.login.step != 1 {
+		t.Fatalf("Enter on 登录 GitHub should open login, got screen=%v step=%d", model.screen, model.login.step)
 	}
 }
 
@@ -342,5 +343,91 @@ func TestLoginErrorMessagesAreActionable(t *testing.T) {
 	badToken := loginErrorText(loginDoneMsg{err: fmt.Errorf("%w: rejected", domain.ErrAuthInvalid), usedToken: true})
 	if !strings.Contains(badToken, "权限") {
 		t.Fatalf("hint = %q, must explain token scopes", badToken)
+	}
+}
+
+func clickAt(model Model, line int) Model {
+	updated, _ := model.Update(tea.MouseMsg{X: 3, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+	return updated.(Model)
+}
+
+func lineOf(model Model, needle string) int {
+	lines := strings.Split(model.View(), "\n")
+	for index, line := range lines {
+		if strings.Contains(line, needle) {
+			return index
+		}
+	}
+	return -1
+}
+
+func TestMouseClicksWorkOnMenusAndDialogs(t *testing.T) {
+	model, _ := newTestModel(t)
+
+	// Click "登录 GitLab" on the welcome menu.
+	line := lineOf(model, "登录 GitLab")
+	if line < 0 {
+		t.Fatal("welcome menu line not found")
+	}
+	model = clickAt(model, line)
+	if model.screen != screenLogin || model.login.step != 1 || model.login.providerIndex != 1 {
+		t.Fatalf("click did not start GitLab login: screen=%v step=%d provider=%d",
+			model.screen, model.login.step, model.login.providerIndex)
+	}
+
+	// Click "粘贴访问码" to reach the token input.
+	line = lineOf(model, "粘贴访问码")
+	if line < 0 {
+		t.Fatal("method line not found")
+	}
+	model = clickAt(model, line)
+	if model.login.step != 2 {
+		t.Fatalf("click did not open the token input: step=%d", model.login.step)
+	}
+
+	// Click through the confirm dialog.
+	ran := false
+	model.screen = screenConfirm
+	model.confirmPrompt = "测试"
+	model.confirmAction = func() tea.Cmd { ran = true; return nil }
+	line = lineOf(model, "[Y] 确认")
+	if line < 0 {
+		t.Fatal("confirm button not found")
+	}
+	model = clickAt(model, line)
+	if !ran {
+		t.Fatal("clicking [Y] 确认 must run the action")
+	}
+}
+
+func TestMouseClickOpensAccountAndAddButton(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+
+	line := lineOf(model, "luna")
+	if line < 0 {
+		t.Fatal("account card not found")
+	}
+	model = clickAt(model, line)
+	if model.screen != screenDetail || model.detailAccount == nil {
+		t.Fatalf("clicking a card must open the detail, got %v", model.screen)
+	}
+
+	model, _ = press(t, model, "esc")
+	line = lineOf(model, "[+ 添加账号]")
+	if line < 0 {
+		t.Fatal("add-account entry not found")
+	}
+	model = clickAt(model, line)
+	if model.screen != screenLogin {
+		t.Fatalf("clicking [+ 添加账号] must open login, got %v", model.screen)
+	}
+}
+
+func TestStripANSIRemovesStyling(t *testing.T) {
+	styled := accentStyle.Render("登录 GitHub")
+	if got := stripANSI(styled); got != "登录 GitHub" {
+		t.Fatalf("stripANSI = %q", got)
 	}
 }

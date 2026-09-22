@@ -53,6 +53,8 @@ type Model struct {
 
 	accounts []AccountCard
 	selected int
+	// welcomeIndex drives the first-run menu shown when no account exists yet.
+	welcomeIndex int
 
 	detailAccount  *domain.Account
 	detailCard     AccountCard

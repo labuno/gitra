@@ -23,4 +23,6 @@ var (
 	accentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
 	dialogStyle  = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).Padding(1, 2)
 	selectedItem = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
+	// menuSelected has no padding so menu rows stay aligned with plain rows.
+	menuSelected = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Bold(true)
 )

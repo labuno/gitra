@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/zhanhd/gitra/internal/domain"
 )
 
 const (
@@ -71,19 +73,22 @@ func (m Model) View() string {
 
 func (m Model) viewAccounts() string {
 	if len(m.accounts) == 0 {
-		lines := []string{
-			accentStyle.Render("欢迎使用 gitra 👋"),
-			"",
-			"你还没有登录任何 Git 账号。",
-			"",
-			"按 A 登录 GitHub / GitLab / Gitea：",
-			"  · 本机已登录过 gh / glab 时，一键完成；",
-			"  · 否则只需粘贴一次访问码，之后不再需要输入。",
-			"",
-			"登录后，gitra 会帮你把项目文件夹绑定到正确账号，",
-			"此后在编辑器里直接同步/上传即可，不需要任何命令。",
+		var builder strings.Builder
+		builder.WriteString(accentStyle.Render("欢迎使用 gitra 👋") + "\n\n")
+		builder.WriteString("你还没有登录任何 Git 账号。请选择（↑↓ 移动，回车确认，鼠标可直接点击）：\n\n")
+		for index, item := range welcomeItems() {
+			marker := "   "
+			line := marker + item.label + "\n"
+			if index == m.welcomeIndex {
+				builder.WriteString(menuSelected.Render(" > "+item.label) + "\n")
+			} else {
+				builder.WriteString(line)
+			}
 		}
-		return strings.Join(lines, "\n") + "\n"
+		builder.WriteString("\n" + subtitleStyle.Render(
+			"登录只需要一次：本机登录过 gh 时直接回车即可；否则粘贴一次访问码，\n"+
+				"之后在编辑器里同步/上传即可，不需要任何命令。") + "\n")
+		return builder.String()
 	}
 	columns := m.columns()
 	var rows []string
@@ -98,7 +103,26 @@ func (m Model) viewAccounts() string {
 		}
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, cards...))
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, rows...) + "\n"
+	body := lipgloss.JoinVertical(lipgloss.Left, rows...)
+	body += "\n" + subtitleStyle.Render("[+ 添加账号]") + "\n"
+	return body
+}
+
+// welcomeItem is one entry of the first-run menu.
+type welcomeItem struct {
+	label    string
+	provider domain.ProviderType
+	quit     bool
+}
+
+// welcomeItems is shared by rendering, keyboard and mouse handling.
+func welcomeItems() []welcomeItem {
+	return []welcomeItem{
+		{label: "登录 GitHub", provider: domain.ProviderGitHub},
+		{label: "登录 GitLab", provider: domain.ProviderGitLab},
+		{label: "登录 Gitea", provider: domain.ProviderGitea},
+		{label: "退出", quit: true},
+	}
 }
 
 func (m Model) renderCard(card AccountCard, focused bool) string {
@@ -177,11 +201,10 @@ func (m Model) viewLogin() string {
 			if index == m.login.providerIndex {
 				marker = "> "
 			}
-			line := marker + name + "\n"
 			if index == m.login.providerIndex {
-				builder.WriteString(accentStyle.Render(line))
+				builder.WriteString(menuSelected.Render(marker+name) + "\n")
 			} else {
-				builder.WriteString(line)
+				builder.WriteString(marker + name + "\n")
 			}
 		}
 	case 1:
@@ -195,11 +218,10 @@ func (m Model) viewLogin() string {
 			if index == m.login.methodIndex {
 				marker = "> "
 			}
-			line := marker + option + "\n"
 			if index == m.login.methodIndex {
-				builder.WriteString(accentStyle.Render(line))
+				builder.WriteString(menuSelected.Render(marker+option) + "\n")
 			} else {
-				builder.WriteString(line)
+				builder.WriteString(marker + option + "\n")
 			}
 		}
 	case 2:
@@ -232,11 +254,10 @@ func (m Model) viewBind() string {
 		if index == m.bind.selected {
 			marker = "> "
 		}
-		line := marker + option + "\n"
 		if index == m.bind.selected {
-			builder.WriteString(accentStyle.Render(line))
+			builder.WriteString(menuSelected.Render(marker+option) + "\n")
 		} else {
-			builder.WriteString(line)
+			builder.WriteString(marker + option + "\n")
 		}
 	}
 	return builder.String()
@@ -253,13 +274,16 @@ func (m Model) viewRemote() string {
 }
 
 func (m Model) viewConfirm() string {
-	return dialogStyle.Render(m.confirmPrompt+"\n\n[Y] 确认    [N] 取消") + "\n"
+	return dialogStyle.Render(m.confirmPrompt+"\n\n[Y] 确认\n[N] 取消") + "\n"
 }
 
 func (m Model) helpLine() string {
 	switch m.screen {
 	case screenAccounts:
-		return "↑↓←→ 选择   Enter 打开   A 添加账号   T 测试连接   Q 退出"
+		if len(m.accounts) == 0 {
+			return "↑↓ 选择   Enter 确认   Q 退出   （也可以用鼠标直接点击上面的选项）"
+		}
+		return "↑↓←→ 选择   Enter 打开   A 添加账号   T 测试连接   Q 退出   （鼠标点击卡片即可打开）"
 	case screenDetail:
 		return "↑↓ 选择项目   B 绑定文件夹   D 解除绑定   T 测试连接   R 修复配置   X 删除账号   Esc 返回"
 	case screenLogin:
@@ -269,7 +293,7 @@ func (m Model) helpLine() string {
 	case screenRemote:
 		return "输入/粘贴仓库地址   Enter 确认并绑定   Esc 返回"
 	case screenConfirm:
-		return "Y 确认   N 取消"
+		return "Y 确认   N 取消   （也可用鼠标点击）"
 	default:
 		return ""
 	}
