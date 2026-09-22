@@ -12,10 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zhanhd/gitra/internal/bootstrap"
+	"github.com/zhanhd/gitra/internal/version"
 )
-
-// version is overridable at build time via -ldflags "-X .../cli.version=...".
-var version = "dev"
 
 // App carries the wired application plus the IO streams used by commands.
 type App struct {
@@ -92,7 +90,7 @@ func (a *App) newRootCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if a.showVersion {
-				_, err := fmt.Fprintf(cmd.OutOrStdout(), "gitra %s\n", version)
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "gitra %s\n", version.Version)
 				return err
 			}
 			return cmd.Help()
@@ -120,7 +118,7 @@ func newVersionCmd() *cobra.Command {
 		Short: "Print the gitra version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "gitra %s\n", version)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "gitra %s\n", version.Version)
 			return err
 		},
 	}

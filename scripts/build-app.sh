@@ -9,7 +9,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 VERSION="${VERSION:-dev}"
 echo "构建 gitra 二进制 ... (version=${VERSION})"
-go build -trimpath -ldflags "-s -w -X github.com/zhanhd/gitra/internal/presentation/cli.version=${VERSION}" \
+go build -trimpath -ldflags "-s -w -X github.com/zhanhd/gitra/internal/version.Version=${VERSION}" \
   -o "$APP/Contents/Resources/gitra" ./cmd/gitra
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'

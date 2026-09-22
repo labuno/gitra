@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  VERSION_PKG: github.com/zhanhd/gitra/internal/presentation/cli.version
+  VERSION_PKG: github.com/zhanhd/gitra/internal/version.Version
 
 jobs:
   test:

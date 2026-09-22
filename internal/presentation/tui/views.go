@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/zhanhd/gitra/internal/domain"
+	"github.com/zhanhd/gitra/internal/version"
 )
 
 const (
@@ -145,6 +146,9 @@ func (m Model) View() string {
 	var builder strings.Builder
 	builder.WriteString(titleStyle.Render("gitra"))
 	builder.WriteString(subtitleStyle.Render("  让每个文件夹用对账号"))
+	if version.Version != "dev" {
+		builder.WriteString(subtitleStyle.Render("  " + version.Version))
+	}
 	builder.WriteString("\n\n")
 
 	switch m.screen {
@@ -172,7 +176,24 @@ func (m Model) View() string {
 		builder.WriteString("\n" + errStyle.Render(m.errText))
 	}
 	builder.WriteString("\n\n" + helpStyle.Render(m.renderHelp()))
-	return builder.String()
+	return fitToWidth(builder.String(), m.width)
+}
+
+// fitToWidth wraps any line that would exceed the terminal width. Without this,
+// a too-wide line makes the terminal wrap it physically while the TUI counts it
+// as one line, which leaves duplicated leftovers on screen.
+func fitToWidth(view string, width int) string {
+	if width <= 0 {
+		return view
+	}
+	wrapper := lipgloss.NewStyle().Width(width)
+	lines := strings.Split(view, "\n")
+	for index, line := range lines {
+		if lipgloss.Width(line) > width {
+			lines[index] = strings.TrimRight(wrapper.Render(line), " \n")
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) viewAccounts() string {

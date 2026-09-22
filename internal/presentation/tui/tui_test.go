@@ -14,6 +14,7 @@ import (
 	"github.com/zhanhd/gitra/internal/app"
 	"github.com/zhanhd/gitra/internal/bootstrap"
 	"github.com/zhanhd/gitra/internal/domain"
+	"github.com/zhanhd/gitra/internal/version"
 )
 
 func newTestModel(t *testing.T) (Model, *bootstrap.App) {
@@ -964,5 +965,42 @@ func TestPublishKeyUploadsFirstTime(t *testing.T) {
 	}
 	if !strings.Contains(model.helpLine(), "U 首次上传") && !strings.Contains(model.renderHelp(), "U 首次上传") {
 		t.Fatalf("help must mention the upload key: %q", model.renderHelp())
+	}
+}
+
+func TestNoRenderedLineExceedsTheWindow(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+	// A very long project path and a long error must still fit the window.
+	model.detailProjects = []Project{{
+		ID: "bnd_x", Alias: "luna", State: "ok",
+		Path: "/Users/someone/very/deep/directory/tree/that/keeps/going/and/going/project-name",
+	}}
+	model.errText = strings.Repeat("很长的错误信息 ", 12)
+
+	for _, width := range []int{40, 60, 80, 100} {
+		model.width = width
+		for _, line := range strings.Split(model.View(), "\n") {
+			if got := displayWidth(line); got > width {
+				t.Fatalf("width %d: line of %d cells:\n%s", width, got, line)
+			}
+		}
+	}
+}
+
+func TestHeaderShowsReleaseVersion(t *testing.T) {
+	original := version.Version
+	t.Cleanup(func() { version.Version = original })
+	version.Version = "v9.9.9"
+
+	model, _ := newTestModel(t)
+	if !strings.Contains(model.View(), "v9.9.9") {
+		t.Fatalf("header must show the build version:\n%s", model.View())
+	}
+	version.Version = "dev"
+	if strings.Contains(model.View(), "dev") {
+		t.Fatalf("local builds should not advertise a version:\n%s", model.View())
 	}
 }
