@@ -21,6 +21,7 @@ var (
 	_ ports.TokenProvider     = (*Adapter)(nil)
 	_ ports.ProfileProvider   = (*Adapter)(nil)
 	_ ports.SSHIdentityParser = (*Adapter)(nil)
+	_ ports.RepoService       = (*Adapter)(nil)
 )
 
 // Adapter implements ports.TokenProvider and ports.ProfileProvider.
@@ -82,10 +83,15 @@ func (a *Adapter) Acquire(ctx context.Context, providerType domain.ProviderType,
 }
 
 // Profile implements ports.ProfileProvider.
-func (a *Adapter) Profile(ctx context.Context, providerType domain.ProviderType, host, token string) (ports.ProviderProfile, error) {
+// httpClient returns the adapter's client, creating a bounded one on demand.
+func (a *Adapter) httpClient() provider.HTTPDoer {
 	if a.http == nil {
 		a.http = &http.Client{Timeout: DefaultHTTPTimeout}
 	}
+	return a.http
+}
+
+func (a *Adapter) Profile(ctx context.Context, providerType domain.ProviderType, host, token string) (ports.ProviderProfile, error) {
 	base := a.baseURL(providerType, host)
 	var (
 		profile provider.Profile
@@ -93,11 +99,11 @@ func (a *Adapter) Profile(ctx context.Context, providerType domain.ProviderType,
 	)
 	switch providerType {
 	case domain.ProviderGitHub:
-		profile, err = github.New(base, a.http).Profile(ctx, token, host)
+		profile, err = github.New(base, a.httpClient()).Profile(ctx, token, host)
 	case domain.ProviderGitLab:
-		profile, err = gitlab.New(base, a.http).Profile(ctx, token, host)
+		profile, err = gitlab.New(base, a.httpClient()).Profile(ctx, token, host)
 	case domain.ProviderGitea:
-		profile, err = gitea.New(base, a.http).Profile(ctx, token, host)
+		profile, err = gitea.New(base, a.httpClient()).Profile(ctx, token, host)
 	default:
 		return ports.ProviderProfile{}, domain.ErrProviderMismatch
 	}
@@ -125,5 +131,33 @@ func (a *Adapter) ParseSSHIdentity(_ context.Context, providerType domain.Provid
 		return gitea.ParseSSHVerification(stdout, stderr)
 	default:
 		return "", false
+	}
+}
+
+// LookupRepo implements ports.RepoService.
+func (a *Adapter) LookupRepo(ctx context.Context, providerType domain.ProviderType, host, token, owner, repo string) (ports.RemoteStatus, error) {
+	switch providerType {
+	case domain.ProviderGitHub:
+		return github.New(a.baseURL(providerType, host), a.httpClient()).LookupRepo(ctx, token, owner, repo)
+	case domain.ProviderGitLab:
+		return gitlab.New(a.baseURL(providerType, host), a.httpClient()).LookupRepo(ctx, token, owner, repo)
+	case domain.ProviderGitea:
+		return gitea.New(a.baseURL(providerType, host), a.httpClient()).LookupRepo(ctx, token, owner, repo)
+	default:
+		return ports.RemoteStatus{}, domain.ErrProviderMismatch
+	}
+}
+
+// CreateRepo implements ports.RepoService.
+func (a *Adapter) CreateRepo(ctx context.Context, providerType domain.ProviderType, host, token, owner, name string, private bool) (ports.RemoteStatus, error) {
+	switch providerType {
+	case domain.ProviderGitHub:
+		return github.New(a.baseURL(providerType, host), a.httpClient()).CreateRepo(ctx, token, owner, name, private)
+	case domain.ProviderGitLab:
+		return gitlab.New(a.baseURL(providerType, host), a.httpClient()).CreateRepo(ctx, token, owner, name, private)
+	case domain.ProviderGitea:
+		return gitea.New(a.baseURL(providerType, host), a.httpClient()).CreateRepo(ctx, token, owner, name, private)
+	default:
+		return ports.RemoteStatus{}, domain.ErrProviderMismatch
 	}
 }

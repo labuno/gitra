@@ -65,3 +65,9 @@ type quitConfirmedMsg struct{}
 type cliLoginResultMsg struct {
 	err error
 }
+
+// remoteCheckMsg reports whether the provider already has the repository.
+type remoteCheckMsg struct {
+	check app.RemoteCheck
+	err   error
+}

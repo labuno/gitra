@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,9 @@ import (
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
 )
+
+// ErrNotFound marks a provider resource that does not exist (HTTP 404).
+var ErrNotFound = errors.New("provider resource not found")
 
 // ErrProfileUnavailable marks provider failures that are not credential
 // problems: network errors, 5xx responses, malformed payloads.
@@ -137,29 +141,50 @@ type HTTPDoer interface {
 // DoJSON performs one JSON request, classifying credential vs availability
 // failures so callers can map them to the right exit code.
 func DoJSON(ctx context.Context, client HTTPDoer, method, url string, headers map[string]string, out any) error {
-	request, err := http.NewRequestWithContext(ctx, method, url, nil)
+	return DoJSONBody(ctx, client, method, url, headers, nil, out)
+}
+
+// DoJSONBody is DoJSON with an optional JSON request body.
+func DoJSONBody(ctx context.Context, client HTTPDoer, method, url string, headers map[string]string, body, out any) error {
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrProfileUnavailable, err)
+		}
+		reader = bytes.NewReader(encoded)
+	}
+	request, err := http.NewRequestWithContext(ctx, method, url, reader)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrProfileUnavailable, err)
 	}
 	for key, value := range headers {
 		request.Header.Set(key, value)
 	}
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.Do(request)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrProfileUnavailable, err)
 	}
 	defer response.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	payload, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrProfileUnavailable, err)
 	}
 	switch {
 	case response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden:
 		return fmt.Errorf("%w: provider rejected the token (HTTP %d)", domain.ErrAuthInvalid, response.StatusCode)
+	case response.StatusCode == http.StatusNotFound:
+		return fmt.Errorf("%w: HTTP 404", ErrNotFound)
 	case response.StatusCode >= 300:
 		return fmt.Errorf("%w: provider returned HTTP %d", ErrProfileUnavailable, response.StatusCode)
 	}
-	if err := json.Unmarshal(body, out); err != nil {
+	if out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(payload, out); err != nil {
 		return fmt.Errorf("%w: invalid response payload: %v", ErrProfileUnavailable, err)
 	}
 	return nil

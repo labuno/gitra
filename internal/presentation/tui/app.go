@@ -150,6 +150,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case remoteCheckMsg:
+		m.busy = false
+		if msg.err != nil {
+			m.errText = plainError(msg.err)
+			return m, nil
+		}
+		if msg.check.Exists {
+			m.message = "已确认仓库存在，正在绑定…"
+			m.busy = true
+			return m, m.bindOnlyCommand(m.bind.account, m.bind.path)
+		}
+		m.confirmPrompt = fmt.Sprintf(
+			"这个仓库在 %s 上还不存在：\n\n%s/%s\n\n要现在创建吗？\n（默认创建为私有仓库，之后可在网页改成公开）",
+			providerLabel(m.bind.account.Provider.Type), msg.check.Owner, msg.check.Name)
+		account, path := m.bind.account, m.bind.path
+		m.confirmAction = func() tea.Cmd { return m.createAndBindCommand(account, path) }
+		m.screen = screenConfirm
+		return m, nil
+
 	case openBindPickerMsg:
 		m.startBind(msg.account, msg.path)
 		return m, nil
@@ -603,8 +622,8 @@ func (m Model) handleRemoteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.busy = true
-		m.message = "正在设置仓库地址并绑定…"
-		return m, m.remoteAndBindCommand(m.bind.account, m.bind.path, strings.TrimSpace(m.bind.remoteURL))
+		m.message = "正在校验仓库地址…"
+		return m, m.ensureAndCheckRemoteCommand(m.bind.account, m.bind.path, strings.TrimSpace(m.bind.remoteURL))
 	default:
 		if msg.Type == tea.KeyRunes {
 			m.bind.remoteURL += string(msg.Runes)

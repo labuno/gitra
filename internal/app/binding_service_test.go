@@ -39,8 +39,14 @@ func (f *fakeGit) DiscoverRepository(_ context.Context, path string) (domain.Rep
 		return domain.Repository{}, domain.ErrNotGitRepository
 	}
 	repo := domain.Repository{RootPath: path, GitDir: path + "/.git"}
-	if f.remote != "" {
-		repo.Remotes = []domain.Remote{{Name: "origin", URL: f.remote}}
+	// Keep the fake self-consistent: an origin written through
+	// SetLocalConfig (EnsureOriginRemote) must be visible to RemoteByName.
+	remoteURL := f.remote
+	if value := f.values["remote.origin.url"]; value != "" {
+		remoteURL = value
+	}
+	if remoteURL != "" {
+		repo.Remotes = []domain.Remote{{Name: "origin", URL: remoteURL}}
 	}
 	return repo, nil
 }

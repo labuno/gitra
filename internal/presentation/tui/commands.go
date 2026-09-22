@@ -245,16 +245,46 @@ func listDirs(path string) ([]string, error) {
 	return dirs, nil
 }
 
-// remoteAndBindCommand adds a missing origin remote, then binds. Existing
-// remotes are never modified.
-func (m *Model) remoteAndBindCommand(account domain.Account, path, url string) tea.Cmd {
+// ensureAndCheckRemote stores a missing origin remote, then asks the provider
+// whether the repository really exists. This is what prevents the "bound to a
+// repository that does not exist" trap.
+func (m *Model) ensureAndCheckRemoteCommand(account domain.Account, path, url string) tea.Cmd {
 	bindings := m.app.Bindings
+	remote := m.app.Remote
 	return func() tea.Msg {
 		ctx := context.Background()
-		if err := bindings.EnsureOriginRemote(ctx, path, url); err != nil {
+		if strings.TrimSpace(url) != "" {
+			if err := bindings.EnsureOriginRemote(ctx, path, url); err != nil {
+				return remoteCheckMsg{err: err}
+			}
+		}
+		if remote == nil {
+			return remoteCheckMsg{err: fmt.Errorf("在线校验不可用")}
+		}
+		check, err := remote.Check(ctx, account.ID, path)
+		return remoteCheckMsg{check: check, err: err}
+	}
+}
+
+// createAndBindCommand creates the provider-side repository and binds.
+func (m *Model) createAndBindCommand(account domain.Account, path string) tea.Cmd {
+	remote := m.app.Remote
+	return func() tea.Msg {
+		if remote == nil {
+			return bindDoneMsg{path: path, alias: account.Alias, err: fmt.Errorf("在线创建不可用")}
+		}
+		if _, err := remote.CreateAndBind(context.Background(), account.ID, path, true); err != nil {
 			return bindDoneMsg{path: path, alias: account.Alias, err: err}
 		}
-		if _, err := bindings.Bind(ctx, app.BindRequest{AccountID: account.ID, Path: path}); err != nil {
+		return bindDoneMsg{path: path, alias: account.Alias}
+	}
+}
+
+// bindOnlyCommand binds a folder whose remote is already confirmed.
+func (m *Model) bindOnlyCommand(account domain.Account, path string) tea.Cmd {
+	bindings := m.app.Bindings
+	return func() tea.Msg {
+		if _, err := bindings.Bind(context.Background(), app.BindRequest{AccountID: account.ID, Path: path}); err != nil {
 			return bindDoneMsg{path: path, alias: account.Alias, err: err}
 		}
 		return bindDoneMsg{path: path, alias: account.Alias}

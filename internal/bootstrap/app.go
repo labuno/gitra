@@ -33,11 +33,16 @@ type App struct {
 	Login        *app.LoginService
 	Verification *app.VerificationService
 	Detector     *app.Detector
+	Remote       *app.RemoteService
 }
 
 // NewFromDeps builds every service around explicit dependencies. It is used by
 // New and by tests that inject fake token/profile providers.
 func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.ProfileProvider, parsers ...ports.SSHIdentityParser) *App {
+	var repoService ports.RepoService
+	if service, ok := profiles.(ports.RepoService); ok {
+		repoService = service
+	}
 	bindings := app.NewBindingService(deps)
 	accounts := app.NewAccountService(deps, bindings)
 	var parser ports.SSHIdentityParser
@@ -52,6 +57,7 @@ func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.Profi
 		Login:        app.NewLoginService(deps, accounts, tokens, profiles),
 		Verification: app.NewVerificationService(deps, profiles, parser),
 		Detector:     app.NewDetector(deps, tokens, parser),
+		Remote:       app.NewRemoteService(deps, repoService, bindings),
 	}
 }
 

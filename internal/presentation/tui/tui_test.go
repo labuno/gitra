@@ -816,3 +816,56 @@ func TestProjectRowsUseReadableState(t *testing.T) {
 		t.Fatalf("project row must show label and raw state:\n%s", view)
 	}
 }
+
+func TestRemoteAddressIsVerifiedBeforeBinding(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	account := mustAccount(t, application, "luna")
+
+	// The folder picker stored an address; the user confirms it with Enter.
+	model.screen = screenRemote
+	model.bind = bindState{path: t.TempDir(), account: account}
+	model.bind.remoteURL = "https://github.com/labuno/gitra.git"
+
+	model, cmd := press(t, model, "enter")
+	if !model.busy || cmd == nil || !strings.Contains(model.message, "校验") {
+		t.Fatalf("Enter must verify the address first: busy=%v msg=%q", model.busy, model.message)
+	}
+
+	// The provider says the repository exists: bind directly.
+	updated, cmd := model.Update(remoteCheckMsg{check: app.RemoteCheck{Exists: true, Owner: "labuno", Name: "gitra"}})
+	model = updated.(Model)
+	if !model.busy || cmd == nil || !strings.Contains(model.message, "已确认仓库存在") {
+		t.Fatalf("existing repository must proceed to bind: busy=%v msg=%q", model.busy, model.message)
+	}
+
+	// The provider says it does not exist: ask before creating anything.
+	updated, _ = model.Update(remoteCheckMsg{check: app.RemoteCheck{Exists: false, Owner: "labuno", Name: "gitra"}})
+	model = updated.(Model)
+	if model.screen != screenConfirm {
+		t.Fatalf("missing repository must ask for confirmation, screen=%v", model.screen)
+	}
+	if !strings.Contains(model.confirmPrompt, "要现在创建吗") || !strings.Contains(model.confirmPrompt, "labuno/gitra") {
+		t.Fatalf("prompt = %q", model.confirmPrompt)
+	}
+
+	// Confirming runs the creation flow and reports an outcome.
+	model, cmd = press(t, model, "y")
+	if cmd == nil {
+		t.Fatal("confirming must start the create-and-bind command")
+	}
+	model = runCmd(t, model, cmd)
+	if model.errText == "" && model.message == "" {
+		t.Fatal("the create flow must report an outcome")
+	}
+}
+
+func mustAccount(t *testing.T, application *bootstrap.App, alias string) domain.Account {
+	t.Helper()
+	account, err := application.Accounts.GetByAlias(context.Background(), alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return account
+}
