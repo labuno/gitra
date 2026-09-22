@@ -17,6 +17,9 @@ type Git interface {
 	// GetLocalConfig reads one repo-local key. found is false when unset.
 	GetLocalConfig(ctx context.Context, repo domain.Repository, key string) (value string, found bool, err error)
 
+	// GetGlobalConfig reads the user's global git config (identity lookup).
+	GetGlobalConfig(ctx context.Context, key string) (value string, found bool, err error)
+
 	SetLocalConfig(ctx context.Context, repo domain.Repository, key string, value string) error
 
 	UnsetLocalConfig(ctx context.Context, repo domain.Repository, key string) error

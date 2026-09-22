@@ -24,6 +24,9 @@ func (f *fakeGit) GetLocalConfig(_ context.Context, _ domain.Repository, key str
 	value, ok := f.values[key]
 	return value, ok, nil
 }
+func (f *fakeGit) GetGlobalConfig(context.Context, string) (string, bool, error) {
+	return "", false, nil
+}
 func (f *fakeGit) SetLocalConfig(_ context.Context, _ domain.Repository, key, value string) error {
 	f.values[key] = value
 	f.writes = append(f.writes, "set "+key)

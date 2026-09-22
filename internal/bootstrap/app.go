@@ -32,6 +32,7 @@ type App struct {
 	Reconciler   *app.Reconciler
 	Login        *app.LoginService
 	Verification *app.VerificationService
+	Detector     *app.Detector
 }
 
 // NewFromDeps builds every service around explicit dependencies. It is used by
@@ -50,6 +51,7 @@ func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.Profi
 		Reconciler:   app.NewReconciler(deps),
 		Login:        app.NewLoginService(deps, accounts, tokens, profiles),
 		Verification: app.NewVerificationService(deps, profiles, parser),
+		Detector:     app.NewDetector(deps, tokens, parser),
 	}
 }
 

@@ -20,12 +20,18 @@ import (
 
 type fakeGit struct {
 	values  map[string]string
+	global  map[string]string
 	remote  string
 	missing map[string]bool
 }
 
 func newFakeGit(remote string) *fakeGit {
-	return &fakeGit{values: map[string]string{"user.name": "Old Name", "user.email": "old@example.com"}, remote: remote, missing: map[string]bool{}}
+	return &fakeGit{
+		values:  map[string]string{"user.name": "Old Name", "user.email": "old@example.com"},
+		global:  map[string]string{},
+		remote:  remote,
+		missing: map[string]bool{},
+	}
 }
 
 func (f *fakeGit) DiscoverRepository(_ context.Context, path string) (domain.Repository, error) {
@@ -38,6 +44,11 @@ func (f *fakeGit) DiscoverRepository(_ context.Context, path string) (domain.Rep
 	}
 	return repo, nil
 }
+func (f *fakeGit) GetGlobalConfig(_ context.Context, key string) (string, bool, error) {
+	value, ok := f.global[key]
+	return value, ok, nil
+}
+
 func (f *fakeGit) GetLocalConfig(_ context.Context, _ domain.Repository, key string) (string, bool, error) {
 	value, ok := f.values[key]
 	return value, ok, nil

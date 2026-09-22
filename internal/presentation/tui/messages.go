@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/zhanhd/gitra/internal/app"
+
 // Messages exchanged between tea.Cmd work and the Update loop (baseline §40).
 type accountsLoadedMsg struct {
 	cards []AccountCard
@@ -41,4 +43,16 @@ type verifyDoneMsg struct {
 type accountRemovedMsg struct {
 	alias string
 	err   error
+}
+
+// candidatesMsg carries the discovered logins for the current provider.
+type candidatesMsg struct {
+	candidates []app.Candidate
+	err        error
+}
+
+// openBrowserMsg reports the result of launching the token page.
+type openBrowserMsg struct {
+	url string
+	err error
 }

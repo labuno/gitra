@@ -31,7 +31,7 @@ func TestSSHCommandShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `ssh -T -i /keys/id_ed25519 -o IdentitiesOnly=yes git@github.com`
+	want := `ssh -T -o BatchMode=yes -i /keys/id_ed25519 -o IdentitiesOnly=yes git@github.com`
 	if runner.calls[0] != want {
 		t.Fatalf("argv = %q, want %q", runner.calls[0], want)
 	}
@@ -51,7 +51,7 @@ func TestSSHCommandCustomPort(t *testing.T) {
 	if !strings.Contains(runner.calls[0], "-p 2222") {
 		t.Fatalf("argv = %q, want -p 2222", runner.calls[0])
 	}
-	if runner.calls[0] != `ssh -T -i /keys/k -o IdentitiesOnly=yes -p 2222 git@git.example.com` {
+	if runner.calls[0] != `ssh -T -o BatchMode=yes -i /keys/k -o IdentitiesOnly=yes -p 2222 git@git.example.com` {
 		t.Fatalf("argv = %q", runner.calls[0])
 	}
 }

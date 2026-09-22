@@ -208,11 +208,16 @@ func (m Model) viewLogin() string {
 			}
 		}
 	case 1:
-		builder.WriteString(fmt.Sprintf("登录 %s（↑↓ 选择，回车继续，Esc 返回）\n\n", providerLabel(providerAt(m.login.providerIndex))))
-		options := []string{
-			"使用本机已登录的 gh / glab（推荐，无需输入）",
-			"粘贴访问码（在平台网页上创建 token 后复制）",
+		builder.WriteString(fmt.Sprintf("登录 %s（↑↓ 选择，回车确认，Esc 返回）\n\n",
+			providerLabel(providerAt(m.login.providerIndex))))
+		if m.login.detecting {
+			builder.WriteString(subtitleStyle.Render("正在检查这台电脑上已有的登录方式…") + "\n")
+			break
 		}
+		if len(m.login.candidates) == 0 {
+			builder.WriteString(subtitleStyle.Render("这台电脑上没有发现可直接使用的登录。") + "\n\n")
+		}
+		options := m.loginOptions()
 		for index, option := range options {
 			marker := "  "
 			if index == m.login.methodIndex {
@@ -224,14 +229,55 @@ func (m Model) viewLogin() string {
 				builder.WriteString(marker + option + "\n")
 			}
 		}
+		builder.WriteString("\n" + subtitleStyle.Render(
+			"提示：「粘贴访问码」是给自建/企业的情况兜底；\n"+
+				"我们会自动打开创建页面并勾好权限，你只需要点一下创建、复制、粘贴。") + "\n")
 	case 2:
 		builder.WriteString(fmt.Sprintf("粘贴访问码（%s）\n\n", providerLabel(providerAt(m.login.providerIndex))))
 		masked := strings.Repeat("•", len(m.login.token))
 		builder.WriteString("> " + masked + "▌\n\n")
-		builder.WriteString(subtitleStyle.Render("在平台网页创建 token（GitHub: Settings → Developer settings → Tokens，\n"+
-			"权限勾选 repo / read:user / user:email），复制后在此粘贴并按回车。\n") + "\n")
+		builder.WriteString(subtitleStyle.Render("已为你打开创建页面：\n"+tokenPageURL(providerAt(m.login.providerIndex), "")+"\n"+
+			"权限："+tokenScopes(providerAt(m.login.providerIndex))+"\n") + "\n")
+		builder.WriteString("创建后复制整串访问码，回到这里按 ⌘V 粘贴，再按回车。\n")
 	}
 	return builder.String()
+}
+
+// loginOptions renders discovered logins first and the manual fallback last.
+func (m Model) loginOptions() []string {
+	options := make([]string, 0, len(m.login.candidates)+1)
+	for _, candidate := range m.login.candidates {
+		options = append(options, candidate.Label)
+	}
+	options = append(options, "粘贴访问码（高级：自己去网页创建）")
+	return options
+}
+
+// tokenPageURL returns the provider's token-creation page, with scopes
+// preselected where the provider supports it.
+func tokenPageURL(providerType domain.ProviderType, host string) string {
+	switch providerType {
+	case domain.ProviderGitHub:
+		return "https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=gitra"
+	case domain.ProviderGitLab:
+		return "https://gitlab.com/-/user_settings/personal_access_tokens?name=gitra&scopes=api,read_user"
+	default:
+		if host == "" {
+			host = "gitea.com"
+		}
+		return "https://" + host + "/user/settings/applications"
+	}
+}
+
+func tokenScopes(providerType domain.ProviderType) string {
+	switch providerType {
+	case domain.ProviderGitHub:
+		return "repo、read:user、user:email"
+	case domain.ProviderGitLab:
+		return "api、read_user"
+	default:
+		return "仓库读写权限"
+	}
 }
 
 func (m Model) viewBind() string {
@@ -287,7 +333,7 @@ func (m Model) helpLine() string {
 	case screenDetail:
 		return "↑↓ 选择项目   B 绑定文件夹   D 解除绑定   T 测试连接   R 修复配置   X 删除账号   Esc 返回"
 	case screenLogin:
-		return "↑↓ 选择   Enter 继续   Esc 返回"
+		return "↑↓ 选择   Enter 确认   Esc 返回   （也可以用鼠标点击）"
 	case screenBind:
 		return "↑↓ 选择   Enter 打开/绑定   E 手动输入路径   Esc 返回"
 	case screenRemote:

@@ -27,6 +27,7 @@ func (fakeGit) DiscoverRepository(context.Context, string) (domain.Repository, e
 func (fakeGit) GetLocalConfig(context.Context, domain.Repository, string) (string, bool, error) {
 	return "", false, nil
 }
+func (fakeGit) GetGlobalConfig(context.Context, string) (string, bool, error)           { return "", false, nil }
 func (fakeGit) SetLocalConfig(context.Context, domain.Repository, string, string) error { return nil }
 func (fakeGit) UnsetLocalConfig(context.Context, domain.Repository, string) error       { return nil }
 func (fakeGit) Remotes(context.Context, domain.Repository) ([]domain.Remote, error)     { return nil, nil }

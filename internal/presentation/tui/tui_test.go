@@ -18,6 +18,17 @@ import (
 
 func newTestModel(t *testing.T) (Model, *bootstrap.App) {
 	t.Helper()
+	// Never launch a real browser from tests.
+	opened := []string{}
+	original := openURL
+	openURL = func(url string) error { opened = append(opened, url); return nil }
+	t.Cleanup(func() { openURL = original })
+	lastOpenedURL = func() string {
+		if len(opened) == 0 {
+			return ""
+		}
+		return opened[len(opened)-1]
+	}
 	t.Setenv("GITRA_CONFIG_DIR", t.TempDir())
 	application, err := bootstrap.New()
 	if err != nil {
@@ -346,6 +357,20 @@ func TestLoginErrorMessagesAreActionable(t *testing.T) {
 	}
 }
 
+// lastOpenedURL is set by newTestModel; it reports what the UI tried to open.
+var lastOpenedURL = func() string { return "" }
+
+// runCmd executes a tea.Cmd (and any follow-up commands) like the runtime does.
+func runCmd(t *testing.T, model Model, cmd tea.Cmd) Model {
+	t.Helper()
+	for i := 0; cmd != nil && i < 10; i++ {
+		updated, next := model.Update(cmd())
+		model = updated.(Model)
+		cmd = next
+	}
+	return model
+}
+
 func clickAt(model Model, line int) Model {
 	updated, _ := model.Update(tea.MouseMsg{X: 3, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
 	return updated.(Model)
@@ -375,14 +400,26 @@ func TestMouseClicksWorkOnMenusAndDialogs(t *testing.T) {
 			model.screen, model.login.step, model.login.providerIndex)
 	}
 
+	// Discovery finishes: the list shows the manual fallback plus any found login.
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+
 	// Click "粘贴访问码" to reach the token input.
 	line = lineOf(model, "粘贴访问码")
 	if line < 0 {
 		t.Fatal("method line not found")
 	}
-	model = clickAt(model, line)
+	model, cmd := func() (Model, tea.Cmd) {
+		updated, c := model.Update(tea.MouseMsg{X: 3, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
+		return updated.(Model), c
+	}()
+	model = runCmd(t, model, cmd)
 	if model.login.step != 2 {
 		t.Fatalf("click did not open the token input: step=%d", model.login.step)
+	}
+	// This test chose GitLab above, so the GitLab token page must open.
+	if got := lastOpenedURL(); !strings.Contains(got, "personal_access_tokens") || !strings.Contains(got, "scopes=") {
+		t.Fatalf("token page should be opened with scopes prefilled, got %q", got)
 	}
 
 	// Click through the confirm dialog.
@@ -429,5 +466,59 @@ func TestStripANSIRemovesStyling(t *testing.T) {
 	styled := accentStyle.Render("登录 GitHub")
 	if got := stripANSI(styled); got != "登录 GitHub" {
 		t.Fatalf("stripANSI = %q", got)
+	}
+}
+
+func TestDiscoveredLoginsAreOfferedFirst(t *testing.T) {
+	model, _ := newTestModel(t)
+
+	// Opening login starts discovery.
+	model, cmd := press(t, model, "a")
+	if !model.login.detecting {
+		t.Fatal("login should start by detecting reusable logins")
+	}
+	if cmd == nil {
+		t.Fatal("detection must run as a command")
+	}
+	if !strings.Contains(model.View(), "正在检查这台电脑上已有的登录方式") {
+		t.Fatalf("view must show progress:\n%s", model.View())
+	}
+
+	// Discovery result: one verified SSH key plus the manual fallback.
+	updated, _ := model.Update(candidatesMsg{candidates: []app.Candidate{{
+		Kind: "ssh-key", Source: "ssh", Provider: domain.ProviderGitHub, Host: "github.com",
+		Username: "lunafoundry", KeyPath: "/Users/x/.ssh/id_ed25519_luna",
+		Label: "使用已有密钥 id_ed25519_luna（已验证属于 lunafoundry）",
+	}}})
+	model = updated.(Model)
+	view := model.View()
+	if !strings.Contains(view, "使用已有密钥 id_ed25519_luna") || !strings.Contains(view, "粘贴访问码") {
+		t.Fatalf("options must show the discovered key first:\n%s", view)
+	}
+
+	// Selecting the discovered key starts that login (no typing at all).
+	model, cmd = press(t, model, "enter")
+	if !model.busy || cmd == nil || !strings.Contains(model.message, "id_ed25519_luna") {
+		t.Fatalf("selecting an ssh candidate should start login: busy=%v msg=%q", model.busy, model.message)
+	}
+}
+
+func TestManualOptionOpensTokenPageWithScopes(t *testing.T) {
+	model, _ := newTestModel(t)
+	model, _ = press(t, model, "a")
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+
+	model, cmd := press(t, model, "enter") // only option: manual
+	if model.login.step != 2 || cmd == nil {
+		t.Fatalf("manual option must open the token step: step=%d", model.login.step)
+	}
+	model = runCmd(t, model, cmd)
+	if got := lastOpenedURL(); !strings.Contains(got, "scopes=repo,read:user,user:email") {
+		t.Fatalf("token page must prefill scopes, got %q", got)
+	}
+	view := model.View()
+	if !strings.Contains(view, "权限：repo、read:user、user:email") {
+		t.Fatalf("manual step must spell out the scopes:\n%s", view)
 	}
 }

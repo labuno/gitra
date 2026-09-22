@@ -44,6 +44,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m.handleKey(msg)
 
+	case candidatesMsg:
+		m.login.detecting = false
+		m.login.candidates = msg.candidates
+		if m.login.methodIndex >= len(m.loginOptions()) {
+			m.login.methodIndex = 0
+		}
+		return m, nil
+
+	case openBrowserMsg:
+		if msg.err != nil {
+			m.message = "如果浏览器没有自动打开，请手动访问：" + msg.url
+		}
+		return m, nil
+
 	case loginDoneMsg:
 		m.busy = false
 		if msg.err != nil {
@@ -173,8 +187,9 @@ func (m Model) handleAccountsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.activateWelcome(items[m.welcomeIndex])
 		case "a":
 			m.message, m.errText = "", ""
-			m.login = loginState{step: 1}
+			m.login = loginState{step: 1, detecting: true}
 			m.screen = screenLogin
+			return m, m.detectCommand(domain.ProviderGitHub, "")
 		}
 		return m, nil
 	}
@@ -302,25 +317,21 @@ func (m Model) handleLoginKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.login.methodIndex = 0
 		}
 	case 1:
+		options := m.loginOptions()
 		switch msg.String() {
 		case "esc":
 			m.login.step = 0
+			m.login.candidates = nil
 		case "up", "k":
 			if m.login.methodIndex > 0 {
 				m.login.methodIndex--
 			}
 		case "down", "j":
-			if m.login.methodIndex < 1 {
+			if m.login.methodIndex < len(options)-1 {
 				m.login.methodIndex++
 			}
 		case "enter":
-			if m.login.methodIndex == 0 {
-				m.busy = true
-				m.message = "正在使用本机已登录的账号…"
-				return m, m.loginCommand(providerAt(m.login.providerIndex), "", true)
-			}
-			m.login.step = 2
-			m.login.token = ""
+			return m.activateLoginOption(m.login.methodIndex)
 		}
 	case 2:
 		switch msg.String() {
@@ -362,9 +373,32 @@ func (m Model) activateWelcome(item welcomeItem) (tea.Model, tea.Cmd) {
 			break
 		}
 	}
-	m.login = loginState{providerIndex: index, step: 1, methodIndex: 0}
+	m.login = loginState{providerIndex: index, step: 1, methodIndex: 0, detecting: true}
 	m.screen = screenLogin
-	return m, nil
+	return m, m.detectCommand(providerAt(index), "")
+}
+
+// activateLoginOption runs the chosen discovered login, or falls back to the
+// manual access code (which opens the prefilled token page).
+func (m Model) activateLoginOption(index int) (tea.Model, tea.Cmd) {
+	if index < 0 || index >= len(m.loginOptions()) {
+		return m, nil
+	}
+	if index < len(m.login.candidates) {
+		candidate := m.login.candidates[index]
+		m.busy = true
+		if candidate.Kind == "ssh-key" {
+			m.message = "正在使用已有密钥 " + filepath.Base(candidate.KeyPath) + " …"
+			return m, m.sshKeyLoginCommand(candidate)
+		}
+		m.message = "正在使用本机已登录的账号…"
+		return m, m.loginCommand(providerAt(m.login.providerIndex), "", true)
+	}
+	m.login.step = 2
+	m.login.token = ""
+	url := tokenPageURL(providerAt(m.login.providerIndex), "")
+	m.message = "已打开创建访问码的页面"
+	return m, openBrowserCmd(url)
 }
 
 func providerAt(index int) domain.ProviderType {
@@ -630,17 +664,15 @@ func (m Model) clickLogin(line string) (tea.Model, tea.Cmd) {
 			}
 		}
 	case 1:
-		if strings.Contains(line, "使用本机已登录") {
-			m.login.methodIndex = 0
-			m.busy = true
-			m.message = "正在使用本机已登录的账号…"
-			return m, m.loginCommand(providerAt(m.login.providerIndex), "", true)
+		for index, candidate := range m.login.candidates {
+			if strings.Contains(line, candidate.Label) {
+				m.login.methodIndex = index
+				return m.activateLoginOption(index)
+			}
 		}
 		if strings.Contains(line, "粘贴访问码") {
-			m.login.methodIndex = 1
-			m.login.step = 2
-			m.login.token = ""
-			return m, nil
+			m.login.methodIndex = len(m.login.candidates)
+			return m.activateLoginOption(len(m.login.candidates))
 		}
 	}
 	return m, nil

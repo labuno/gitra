@@ -245,3 +245,40 @@ func (m *Model) remoteAndBindCommand(account domain.Account, path, url string) t
 		return bindDoneMsg{path: path, alias: account.Alias}
 	}
 }
+
+// detectCommand looks for reusable logins already present on this machine.
+func (m *Model) detectCommand(provider domain.ProviderType, host string) tea.Cmd {
+	detector := m.app.Detector
+	return func() tea.Msg {
+		if detector == nil {
+			return candidatesMsg{}
+		}
+		return candidatesMsg{candidates: detector.Detect(context.Background(), provider, host)}
+	}
+}
+
+// sshKeyLoginCommand registers an account that uses a key the provider
+// already accepts.
+func (m *Model) sshKeyLoginCommand(candidate app.Candidate) tea.Cmd {
+	login := m.app.Login
+	return func() tea.Msg {
+		if login == nil {
+			return loginDoneMsg{err: fmt.Errorf("登录功能不可用")}
+		}
+		result, err := login.LoginWithSSHKey(context.Background(), app.SSHLoginRequest{
+			Provider: providerForSSH(candidate), Host: candidate.Host,
+			KeyPath: candidate.KeyPath, Username: candidate.Username,
+		})
+		if err != nil {
+			return loginDoneMsg{err: err}
+		}
+		return loginDoneMsg{alias: result.Account.Alias, username: result.Profile.Username, host: candidate.Host, created: result.Created}
+	}
+}
+
+func providerForSSH(candidate app.Candidate) domain.ProviderType {
+	if candidate.Provider != "" {
+		return candidate.Provider
+	}
+	return domain.ProviderGitHub
+}

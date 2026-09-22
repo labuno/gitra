@@ -115,6 +115,14 @@ func TestLocalConfigRoundTrip(t *testing.T) {
 	}
 }
 
+func TestGetGlobalConfig(t *testing.T) {
+	adapter := New(runner.New())
+	// A missing key is (_, false, nil); the test machine may or may not have one.
+	if value, found, err := adapter.GetGlobalConfig(context.Background(), "gitra.test.nonexistent"); err != nil || found || value != "" {
+		t.Fatalf("missing global key = (%q, %v, %v)", value, found, err)
+	}
+}
+
 func TestRemotes(t *testing.T) {
 	root := newRepo(t, "git@github.com:lunafoundry/luna-site.git")
 	mustRun(t, root, "remote", "add", "upstream", "ssh://git@git.example.com:2222/luna/repo.git")

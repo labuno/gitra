@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/zhanhd/gitra/internal/app"
 	"github.com/zhanhd/gitra/internal/bootstrap"
 	"github.com/zhanhd/gitra/internal/domain"
 )
@@ -72,9 +73,13 @@ type Model struct {
 
 type loginState struct {
 	providerIndex int
-	step          int // 0 provider, 1 method, 2 token input
+	step          int // 0 provider, 1 discovered logins, 2 manual access code
 	methodIndex   int
 	token         string
+
+	// Discovered reusable logins (gh session, existing SSH keys).
+	detecting  bool
+	candidates []app.Candidate
 }
 
 type bindState struct {

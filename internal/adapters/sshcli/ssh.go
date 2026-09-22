@@ -20,9 +20,15 @@ type Adapter struct {
 // New builds the adapter over a process runner.
 func New(runner ports.CommandRunner) *Adapter { return &Adapter{runner: runner} }
 
-// Test runs `ssh -T -i <key> -o IdentitiesOnly=yes [-p port] <user>@<host>`.
+// Test runs
+//
+//	ssh -T -o BatchMode=yes -i <key> -o IdentitiesOnly=yes [-p port] <user>@<host>
+//
+// BatchMode keeps the probe non-interactive: ssh must never prompt for a
+// passphrase, because a prompt would hijack the TUI's terminal. Keys that need
+// a passphrase have to be loaded into ssh-agent first (standard practice).
 func (a *Adapter) Test(ctx context.Context, req ports.SSHTestRequest) (ports.SSHTestResult, error) {
-	args := []string{"-T"}
+	args := []string{"-T", "-o", "BatchMode=yes"}
 	if req.PrivateKeyPath != "" {
 		args = append(args, "-i", req.PrivateKeyPath, "-o", "IdentitiesOnly=yes")
 	}

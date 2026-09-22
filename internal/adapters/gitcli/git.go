@@ -106,6 +106,21 @@ func (a *Adapter) GetLocalConfig(ctx context.Context, repo domain.Repository, ke
 	return strings.TrimRight(res.Stdout, "\n"), true, nil
 }
 
+// GetGlobalConfig reads one key from the user's global git config.
+func (a *Adapter) GetGlobalConfig(ctx context.Context, key string) (string, bool, error) {
+	res, err := a.runner.Run(ctx, "git", "config", "--global", "--get", key)
+	if err != nil {
+		return "", false, err
+	}
+	if res.ExitCode == 1 {
+		return "", false, nil
+	}
+	if res.ExitCode != 0 {
+		return "", false, fmt.Errorf("git config --global --get %s: %s", key, firstLine(res.Stderr))
+	}
+	return strings.TrimRight(res.Stdout, "\n"), true, nil
+}
+
 // SetLocalConfig writes one repo-local key.
 func (a *Adapter) SetLocalConfig(ctx context.Context, repo domain.Repository, key, value string) error {
 	res, err := a.run(ctx, repo.RootPath, "config", "--local", key, value)
