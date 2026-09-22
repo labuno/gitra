@@ -195,3 +195,29 @@ func mustAuthRegistry(t *testing.T) *auth.Registry {
 	}
 	return registry
 }
+
+// TestUnbindSurvivesDeletedAccount covers the case where the account record
+// disappeared (for example the store was edited by hand): unbind must still
+// restore the repository using the snapshot.
+func TestUnbindSurvivesDeletedAccount(t *testing.T) {
+	env := newHTTPSEnv(t, "https://github.com/lunafoundry/luna-site.git")
+	ctx := context.Background()
+	if _, err := env.service.Bind(ctx, BindRequest{AccountID: env.account.ID, Path: "/repo"}); err != nil {
+		t.Fatal(err)
+	}
+
+	accounts := env.deps.Accounts.(*fakeAccounts)
+	accounts.missing = true
+
+	if err := env.service.Unbind(ctx, UnbindRequest{Path: "/repo"}); err != nil {
+		t.Fatalf("Unbind() error = %v, want success even without the account", err)
+	}
+	for _, key := range []string{"credential.https://github.com.username", "credential.helper", "gitra.bindingId"} {
+		if _, present := env.git.values[key]; present {
+			t.Fatalf("%s left behind: %+v", key, env.git.values)
+		}
+	}
+	if env.git.values["user.email"] != "old@example.com" {
+		t.Fatalf("identity not restored: %+v", env.git.values)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/adapters/provider"
 	"github.com/zhanhd/gitra/internal/adapters/provider/gitea"
@@ -30,9 +31,16 @@ type Adapter struct {
 	BaseURL func(providerType domain.ProviderType, host string) string
 }
 
+// DefaultHTTPTimeout bounds every provider API call so a stalled network can
+// never freeze the interface.
+const DefaultHTTPTimeout = 20 * time.Second
+
 // New builds the adapter over a process runner and stdin.
 func New(runner ports.CommandRunner, stdin io.Reader) *Adapter {
-	return &Adapter{resolver: provider.NewTokenResolver(runner, stdin), http: http.DefaultClient}
+	return &Adapter{
+		resolver: provider.NewTokenResolver(runner, stdin),
+		http:     &http.Client{Timeout: DefaultHTTPTimeout},
+	}
 }
 
 // defaultBaseURL derives API endpoints from the provider and host.
@@ -75,6 +83,9 @@ func (a *Adapter) Acquire(ctx context.Context, providerType domain.ProviderType,
 
 // Profile implements ports.ProfileProvider.
 func (a *Adapter) Profile(ctx context.Context, providerType domain.ProviderType, host, token string) (ports.ProviderProfile, error) {
+	if a.http == nil {
+		a.http = &http.Client{Timeout: DefaultHTTPTimeout}
+	}
 	base := a.baseURL(providerType, host)
 	var (
 		profile provider.Profile

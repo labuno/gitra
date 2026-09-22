@@ -266,12 +266,16 @@ func (s *BindingService) Unbind(ctx context.Context, req UnbindRequest) error {
 		}
 		var account domain.Account
 		if found {
-			account, err = s.deps.Accounts.Get(ctx, binding.AccountID)
-			if err != nil {
-				return err
+			// A missing account must not make unbind impossible: fall back to
+			// the snapshot, which records every managed key.
+			if loaded, err := s.deps.Accounts.Get(ctx, binding.AccountID); err == nil {
+				account = loaded
 			}
 		}
 		keys := managedKeyNames(account)
+		if hasSnapshot {
+			keys = mergeKeys(keys, snapshotKeys(snapshot))
+		}
 
 		if hasSnapshot {
 			previous := toPreviousEntries(snapshot.Previous, keys)
@@ -423,6 +427,32 @@ func (s *BindingService) rollback(ctx context.Context, repo domain.Repository, s
 	if centralSaved {
 		_ = s.deps.Bindings.Delete(ctx, bindingID)
 	}
+}
+
+// snapshotKeys returns the managed keys recorded in a snapshot.
+func snapshotKeys(snapshot ports.Snapshot) []string {
+	keys := make([]string, 0, len(snapshot.Previous))
+	for key := range snapshot.Previous {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// mergeKeys unions two key lists, sorted and de-duplicated.
+func mergeKeys(base, extra []string) []string {
+	seen := make(map[string]bool, len(base)+len(extra))
+	merged := make([]string, 0, len(base)+len(extra))
+	for _, list := range [][]string{base, extra} {
+		for _, key := range list {
+			if !seen[key] {
+				seen[key] = true
+				merged = append(merged, key)
+			}
+		}
+	}
+	sort.Strings(merged)
+	return merged
 }
 
 func toPreviousEntries(previous map[string]ports.ConfigState, keys []string) []routing.PreviousEntry {

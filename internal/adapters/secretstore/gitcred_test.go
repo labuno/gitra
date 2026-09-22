@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/adapters/runner"
 	"github.com/zhanhd/gitra/internal/domain"
@@ -127,5 +128,26 @@ func TestStoreRoundTripWithRealGit(t *testing.T) {
 	}
 	if _, err := store.Get(ctx, "github.com/lunafoundry"); !errors.Is(err, domain.ErrAuthInvalid) {
 		t.Fatalf("after delete error = %v, want ErrAuthInvalid", err)
+	}
+}
+
+type blockingRunner struct{}
+
+func (blockingRunner) Run(ctx context.Context, _ string, _ ...string) (ports.ProcessResult, error) {
+	<-ctx.Done()
+	return ports.ProcessResult{}, ctx.Err()
+}
+func (b blockingRunner) RunWithInput(ctx context.Context, name, _ string, args ...string) (ports.ProcessResult, error) {
+	return b.Run(ctx, name, args...)
+}
+
+func TestCredentialOperationsAreBounded(t *testing.T) {
+	store := NewGitCredentialStore(blockingRunner{}, "")
+	start := time.Now()
+	if err := store.Set(context.Background(), "github.com/lunafoundry", "tok"); err == nil {
+		t.Fatal("a blocked credential store must return an error")
+	}
+	if elapsed := time.Since(start); elapsed > 30*time.Second {
+		t.Fatalf("Set took %s; credential operations must be bounded", elapsed)
 	}
 }

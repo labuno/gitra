@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
 )
+
+// loginTimeout bounds one complete login attempt.
+const loginTimeout = 45 * time.Second
 
 // LoginRequest describes one provider login.
 type LoginRequest struct {
@@ -47,6 +51,10 @@ func (s *LoginService) Login(ctx context.Context, req LoginRequest) (LoginResult
 	if s.tokens == nil || s.profiles == nil || s.deps.Secrets == nil {
 		return LoginResult{}, errors.New("login is not available in this build")
 	}
+	// Bound the whole login: acquisition may probe a CLI, profile lookup goes
+	// over the network, and storage may wait on a Keychain prompt.
+	ctx, cancel := context.WithTimeout(ctx, loginTimeout)
+	defer cancel()
 	provider, err := s.providerEndpoint(req)
 	if err != nil {
 		return LoginResult{}, err

@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
 )
+
+// verifyTimeout bounds one verification attempt.
+const verifyTimeout = 30 * time.Second
 
 // VerificationStatus classifies verification outcomes (baseline §48).
 type VerificationStatus string
@@ -49,6 +53,11 @@ func NewVerificationService(deps Deps, profiles ports.ProfileProvider, parsers p
 
 // VerifyAccount verifies one account using its auth strategy.
 func (s *VerificationService) VerifyAccount(ctx context.Context, id domain.AccountID) (VerificationResult, error) {
+	// Verification talks to the provider or runs ssh: bound it so callers
+	// (including the TUI) never wait forever.
+	ctx, cancel := context.WithTimeout(ctx, verifyTimeout)
+	defer cancel()
+
 	account, err := s.deps.Accounts.Get(ctx, id)
 	if err != nil {
 		return VerificationResult{}, err

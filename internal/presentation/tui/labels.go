@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -57,6 +58,8 @@ func plainError(err error) string {
 		return ""
 	}
 	switch {
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+		return "操作超时：网络或系统凭据库没有响应，请稍后重试。"
 	case errors.Is(err, domain.ErrAuthInvalid):
 		return "登录已失效：请在账号页按 T 重新登录。"
 	case errors.Is(err, domain.ErrAlreadyBound):

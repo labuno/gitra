@@ -25,7 +25,8 @@ type Reconciler struct {
 func NewReconciler(deps Deps) *Reconciler { return &Reconciler{deps: deps} }
 
 // ReconcileBinding repairs one binding. A missing repository path is reported
-// as HealthMissing and is not an error (baseline §13).
+// as HealthMissing and is not an error (baseline §13). Writes happen inside the
+// process-wide write lock (baseline §31).
 func (r *Reconciler) ReconcileBinding(ctx context.Context, id domain.BindingID) (ReconcileResult, error) {
 	return r.reconcileBinding(ctx, id)
 }
@@ -59,6 +60,25 @@ func (r *Reconciler) ReconcileAccount(ctx context.Context, id domain.AccountID) 
 }
 
 func (r *Reconciler) reconcileBinding(ctx context.Context, id domain.BindingID) (ReconcileResult, error) {
+	if r.deps.Locker == nil {
+		return r.reconcileBindingLocked(ctx, id)
+	}
+	var result ReconcileResult
+	err := r.deps.Locker.WithWriteLock(ctx, func() error {
+		res, err := r.reconcileBindingLocked(ctx, id)
+		if err != nil {
+			return err
+		}
+		result = res
+		return nil
+	})
+	if err != nil {
+		return ReconcileResult{}, err
+	}
+	return result, nil
+}
+
+func (r *Reconciler) reconcileBindingLocked(ctx context.Context, id domain.BindingID) (ReconcileResult, error) {
 	binding, err := r.deps.Bindings.Get(ctx, id)
 	if err != nil {
 		return ReconcileResult{}, err

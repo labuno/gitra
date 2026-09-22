@@ -65,10 +65,16 @@ func (f *fakeGit) Remotes(context.Context, domain.Repository) ([]domain.Remote, 
 	return nil, nil
 }
 
-type fakeAccounts struct{ account domain.Account }
+type fakeAccounts struct {
+	account domain.Account
+	missing bool
+}
 
 func (f *fakeAccounts) Save(context.Context, domain.Account) error { return nil }
 func (f *fakeAccounts) Get(context.Context, domain.AccountID) (domain.Account, error) {
+	if f.missing {
+		return domain.Account{}, domain.ErrAccountNotFound
+	}
 	return f.account, nil
 }
 func (f *fakeAccounts) List(context.Context) ([]domain.Account, error) {
@@ -149,6 +155,14 @@ func (f *fakeSnapshots) Delete(gitDir string) error {
 type noopLocker struct{}
 
 func (noopLocker) WithWriteLock(_ context.Context, fn func() error) error { return fn() }
+
+// countingLocker records how many write transactions were started.
+type countingLocker struct{ acquired int }
+
+func (c *countingLocker) WithWriteLock(_ context.Context, fn func() error) error {
+	c.acquired++
+	return fn()
+}
 
 type fixedClock struct{}
 

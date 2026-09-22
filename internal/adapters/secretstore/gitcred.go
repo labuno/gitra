@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/ports"
@@ -48,7 +49,14 @@ func (s *GitCredentialStore) credentialRequest(host, username, password string) 
 	return builder.String()
 }
 
+// credentialTimeout bounds a single credential-store operation. macOS may
+// block on a Keychain prompt, and the UI must stay responsive.
+const credentialTimeout = 15 * time.Second
+
 func (s *GitCredentialStore) run(ctx context.Context, input string, args ...string) (ports.ProcessResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, credentialTimeout)
+	defer cancel()
+
 	full := make([]string, 0, len(args)+2)
 	if s.helper != "" {
 		full = append(full, "-c", "credential.helper="+s.helper)

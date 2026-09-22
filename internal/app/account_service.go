@@ -140,7 +140,11 @@ func (s *AccountService) Delete(ctx context.Context, req DeleteAccountRequest) e
 			return fmt.Errorf("unbind %s: %w", binding.Repository.Path, err)
 		}
 	}
-	return s.deps.Accounts.Delete(ctx, req.ID)
+	// Unbind takes the lock itself, so the final store write takes it here
+	// rather than around the whole method (the locker is not re-entrant).
+	return s.deps.Locker.WithWriteLock(ctx, func() error {
+		return s.deps.Accounts.Delete(ctx, req.ID)
+	})
 }
 
 // validateLocalAuth runs the offline half of account validation: the

@@ -56,3 +56,6 @@ type openBrowserMsg struct {
 	url string
 	err error
 }
+
+// quitConfirmedMsg fires after the user confirms quitting.
+type quitConfirmedMsg struct{}

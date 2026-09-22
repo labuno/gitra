@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,7 +15,10 @@ import (
 
 // Run starts the interactive TUI.
 func Run(application *bootstrap.App) error {
-	program := tea.NewProgram(New(application), tea.WithAltScreen(), tea.WithMouseCellMotion())
+	// Mouse events are deliberately NOT captured: the terminal keeps its
+	// native drag-to-select/copy behaviour and a stray click cannot trigger
+	// an action. The TUI is keyboard-driven (baseline §49).
+	program := tea.NewProgram(New(application), tea.WithAltScreen())
 	_, err := program.Run()
 	return err
 }
@@ -31,15 +33,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
 
-	case tea.MouseMsg:
-		return m.handleMouse(msg)
-
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			m.quit = true
 			return m, tea.Quit
 		}
 		if m.busy {
+			// Long operations (login, connection test) must be escapable: the
+			// work continues in the background, its result is still applied.
+			if msg.String() == "esc" {
+				m.busy = false
+				m.message = ""
+				m.errText = "已停止等待。如果刚才的操作稍后完成，结果仍会出现在这里。"
+			}
 			return m, nil
 		}
 		return m.handleKey(msg)
@@ -122,6 +128,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case quitConfirmedMsg:
+		m.quit = true
+		return m, tea.Quit
+
 	case accountRemovedMsg:
 		m.busy = false
 		if msg.err != nil {
@@ -173,8 +183,7 @@ func (m Model) handleAccountsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		items := welcomeItems()
 		switch msg.String() {
 		case "q":
-			m.quit = true
-			return m, tea.Quit
+			return m.requestQuit()
 		case "up", "k":
 			if m.welcomeIndex > 0 {
 				m.welcomeIndex--
@@ -196,8 +205,7 @@ func (m Model) handleAccountsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	columns := m.columns()
 	switch msg.String() {
 	case "q":
-		m.quit = true
-		return m, tea.Quit
+		return m.requestQuit()
 	case "up", "k":
 		if m.selected-columns >= 0 {
 			m.selected -= columns
@@ -359,11 +367,11 @@ func (m Model) handleLoginKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// activateWelcome starts login for the chosen provider (or quits).
+// activateWelcome starts login for the chosen provider; quitting always asks
+// for confirmation first so a stray click cannot close the app.
 func (m Model) activateWelcome(item welcomeItem) (tea.Model, tea.Cmd) {
 	if item.quit {
-		m.quit = true
-		return m, tea.Quit
+		return m.requestQuit()
 	}
 	m.message, m.errText = "", ""
 	index := 0
@@ -399,6 +407,16 @@ func (m Model) activateLoginOption(index int) (tea.Model, tea.Cmd) {
 	url := tokenPageURL(providerAt(m.login.providerIndex), "")
 	m.message = "已打开创建访问码的页面"
 	return m, openBrowserCmd(url)
+}
+
+// requestQuit opens the confirmation dialog instead of quitting immediately.
+func (m Model) requestQuit() (tea.Model, tea.Cmd) {
+	m.confirmPrompt = "要退出 gitra 吗？\n\n已绑定的文件夹不受影响，随时可以再打开。"
+	m.confirmAction = func() tea.Cmd {
+		return func() tea.Msg { return quitConfirmedMsg{} }
+	}
+	m.screen = screenConfirm
+	return m, nil
 }
 
 func providerAt(index int) domain.ProviderType {
@@ -567,147 +585,3 @@ func (m *Model) offerOnboardingBind(alias string) tea.Cmd {
 }
 
 var _ = app.DeleteAccountRequest{}
-
-// ---------------------------------------------------------------------------
-// Mouse support: a click is matched against the rendered line, so the mapping
-// stays correct as long as the label is visible.
-// ---------------------------------------------------------------------------
-
-var ansiPattern = regexp.MustCompile("\x1b\\[[0-9;?]*[a-zA-Z]")
-
-func stripANSI(text string) string { return ansiPattern.ReplaceAllString(text, "") }
-
-func (m Model) clickedLine(y int) (string, bool) {
-	lines := strings.Split(m.View(), "\n")
-	if y < 0 || y >= len(lines) {
-		return "", false
-	}
-	return strings.TrimSpace(stripANSI(lines[y])), true
-}
-
-func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
-		return m, nil
-	}
-	line, ok := m.clickedLine(msg.Y)
-	if !ok {
-		return m, nil
-	}
-	switch m.screen {
-	case screenAccounts:
-		return m.clickAccounts(line)
-	case screenDetail:
-		return m.clickDetail(line)
-	case screenLogin:
-		return m.clickLogin(line)
-	case screenBind:
-		return m.clickBind(line)
-	case screenConfirm:
-		if strings.Contains(line, "[Y] 确认") {
-			return m.handleConfirmKey(keyMsgFor("y"))
-		}
-		if strings.Contains(line, "[N] 取消") {
-			return m.handleConfirmKey(keyMsgFor("n"))
-		}
-	}
-	return m, nil
-}
-
-func (m Model) clickAccounts(line string) (tea.Model, tea.Cmd) {
-	if len(m.accounts) == 0 {
-		for _, item := range welcomeItems() {
-			if strings.Contains(line, item.label) {
-				return m.activateWelcome(item)
-			}
-		}
-		return m, nil
-	}
-	if strings.Contains(line, "[+ 添加账号]") {
-		m.message, m.errText = "", ""
-		m.login = loginState{}
-		m.screen = screenLogin
-		return m, nil
-	}
-	for index, card := range m.accounts {
-		if strings.Contains(line, card.Alias) {
-			m.selected = index
-			m.message, m.errText = "", ""
-			m.openDetail()
-			if m.detailAccount != nil {
-				m.screen = screenDetail
-			}
-			return m, nil
-		}
-	}
-	return m, nil
-}
-
-func (m Model) clickDetail(line string) (tea.Model, tea.Cmd) {
-	for index, project := range m.detailProjects {
-		if strings.Contains(line, project.Path) {
-			m.detailSelected = index
-			return m, nil
-		}
-	}
-	return m, nil
-}
-
-func (m Model) clickLogin(line string) (tea.Model, tea.Cmd) {
-	switch m.login.step {
-	case 0:
-		for index, name := range []string{"GitHub", "GitLab", "Gitea"} {
-			if strings.Contains(line, name) {
-				m.login.providerIndex = index
-				m.login.step = 1
-				m.login.methodIndex = 0
-				return m, nil
-			}
-		}
-	case 1:
-		for index, candidate := range m.login.candidates {
-			if strings.Contains(line, candidate.Label) {
-				m.login.methodIndex = index
-				return m.activateLoginOption(index)
-			}
-		}
-		if strings.Contains(line, "粘贴访问码") {
-			m.login.methodIndex = len(m.login.candidates)
-			return m.activateLoginOption(len(m.login.candidates))
-		}
-	}
-	return m, nil
-}
-
-func (m Model) clickBind(line string) (tea.Model, tea.Cmd) {
-	if strings.Contains(line, "使用这个文件夹") {
-		m.bind.selected = 0
-		return m.prepareBind()
-	}
-	if strings.Contains(line, "上一层") {
-		parent := filepath.Dir(m.bind.path)
-		entries, err := listDirs(parent)
-		if err != nil {
-			m.errText = "无法读取文件夹：" + err.Error()
-			return m, nil
-		}
-		m.bind.path, m.bind.entries, m.bind.selected = parent, entries, 0
-		return m, nil
-	}
-	for _, name := range m.bind.entries {
-		if line == name || strings.HasSuffix(line, name) {
-			next := filepath.Join(m.bind.path, name)
-			entries, err := listDirs(next)
-			if err != nil {
-				m.errText = "无法读取文件夹：" + err.Error()
-				return m, nil
-			}
-			m.bind.path, m.bind.entries, m.bind.selected = next, entries, 0
-			return m, nil
-		}
-	}
-	return m, nil
-}
-
-func keyMsgFor(value string) tea.KeyMsg {
-	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(value)}
-}

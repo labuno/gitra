@@ -75,7 +75,7 @@ func (m Model) viewAccounts() string {
 	if len(m.accounts) == 0 {
 		var builder strings.Builder
 		builder.WriteString(accentStyle.Render("欢迎使用 gitra 👋") + "\n\n")
-		builder.WriteString("你还没有登录任何 Git 账号。请选择（↑↓ 移动，回车确认，鼠标可直接点击）：\n\n")
+		builder.WriteString("你还没有登录任何 Git 账号。请选择（↑↓ 移动，回车确认）：\n\n")
 		for index, item := range welcomeItems() {
 			marker := "   "
 			line := marker + item.label + "\n"
@@ -327,19 +327,19 @@ func (m Model) helpLine() string {
 	switch m.screen {
 	case screenAccounts:
 		if len(m.accounts) == 0 {
-			return "↑↓ 选择   Enter 确认   Q 退出   （也可以用鼠标直接点击上面的选项）"
+			return "↑↓ 选择   Enter 确认   Q 退出"
 		}
-		return "↑↓←→ 选择   Enter 打开   A 添加账号   T 测试连接   Q 退出   （鼠标点击卡片即可打开）"
+		return "↑↓←→ 选择   Enter 打开   A 添加账号   T 测试连接   Q 退出"
 	case screenDetail:
 		return "↑↓ 选择项目   B 绑定文件夹   D 解除绑定   T 测试连接   R 修复配置   X 删除账号   Esc 返回"
 	case screenLogin:
-		return "↑↓ 选择   Enter 确认   Esc 返回   （也可以用鼠标点击）"
+		return "↑↓ 选择   Enter 确认   Esc 返回"
 	case screenBind:
 		return "↑↓ 选择   Enter 打开/绑定   E 手动输入路径   Esc 返回"
 	case screenRemote:
 		return "输入/粘贴仓库地址   Enter 确认并绑定   Esc 返回"
 	case screenConfirm:
-		return "Y 确认   N 取消   （也可用鼠标点击）"
+		return "Y 确认   N 取消"
 	default:
 		return ""
 	}

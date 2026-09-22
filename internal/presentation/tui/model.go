@@ -65,8 +65,9 @@ type Model struct {
 	login loginState
 	bind  bindState
 	// confirm dialog
-	confirmPrompt string
-	confirmAction func() tea.Cmd
+	confirmPrompt  string
+	confirmAction  func() tea.Cmd
+	confirmConfirm func() tea.Cmd
 
 	quit bool
 }

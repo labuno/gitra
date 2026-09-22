@@ -371,10 +371,7 @@ func runCmd(t *testing.T, model Model, cmd tea.Cmd) Model {
 	return model
 }
 
-func clickAt(model Model, line int) Model {
-	updated, _ := model.Update(tea.MouseMsg{X: 3, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
-	return updated.(Model)
-}
+// dragFromTo simulates dragging (for example to select text): press somewhere,
 
 func lineOf(model Model, needle string) int {
 	lines := strings.Split(model.View(), "\n")
@@ -384,89 +381,6 @@ func lineOf(model Model, needle string) int {
 		}
 	}
 	return -1
-}
-
-func TestMouseClicksWorkOnMenusAndDialogs(t *testing.T) {
-	model, _ := newTestModel(t)
-
-	// Click "登录 GitLab" on the welcome menu.
-	line := lineOf(model, "登录 GitLab")
-	if line < 0 {
-		t.Fatal("welcome menu line not found")
-	}
-	model = clickAt(model, line)
-	if model.screen != screenLogin || model.login.step != 1 || model.login.providerIndex != 1 {
-		t.Fatalf("click did not start GitLab login: screen=%v step=%d provider=%d",
-			model.screen, model.login.step, model.login.providerIndex)
-	}
-
-	// Discovery finishes: the list shows the manual fallback plus any found login.
-	updated, _ := model.Update(candidatesMsg{})
-	model = updated.(Model)
-
-	// Click "粘贴访问码" to reach the token input.
-	line = lineOf(model, "粘贴访问码")
-	if line < 0 {
-		t.Fatal("method line not found")
-	}
-	model, cmd := func() (Model, tea.Cmd) {
-		updated, c := model.Update(tea.MouseMsg{X: 3, Y: line, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft})
-		return updated.(Model), c
-	}()
-	model = runCmd(t, model, cmd)
-	if model.login.step != 2 {
-		t.Fatalf("click did not open the token input: step=%d", model.login.step)
-	}
-	// This test chose GitLab above, so the GitLab token page must open.
-	if got := lastOpenedURL(); !strings.Contains(got, "personal_access_tokens") || !strings.Contains(got, "scopes=") {
-		t.Fatalf("token page should be opened with scopes prefilled, got %q", got)
-	}
-
-	// Click through the confirm dialog.
-	ran := false
-	model.screen = screenConfirm
-	model.confirmPrompt = "测试"
-	model.confirmAction = func() tea.Cmd { ran = true; return nil }
-	line = lineOf(model, "[Y] 确认")
-	if line < 0 {
-		t.Fatal("confirm button not found")
-	}
-	model = clickAt(model, line)
-	if !ran {
-		t.Fatal("clicking [Y] 确认 must run the action")
-	}
-}
-
-func TestMouseClickOpensAccountAndAddButton(t *testing.T) {
-	model, application := newTestModel(t)
-	addSSHAccount(t, application, "luna")
-	model.loadAccounts()
-
-	line := lineOf(model, "luna")
-	if line < 0 {
-		t.Fatal("account card not found")
-	}
-	model = clickAt(model, line)
-	if model.screen != screenDetail || model.detailAccount == nil {
-		t.Fatalf("clicking a card must open the detail, got %v", model.screen)
-	}
-
-	model, _ = press(t, model, "esc")
-	line = lineOf(model, "[+ 添加账号]")
-	if line < 0 {
-		t.Fatal("add-account entry not found")
-	}
-	model = clickAt(model, line)
-	if model.screen != screenLogin {
-		t.Fatalf("clicking [+ 添加账号] must open login, got %v", model.screen)
-	}
-}
-
-func TestStripANSIRemovesStyling(t *testing.T) {
-	styled := accentStyle.Render("登录 GitHub")
-	if got := stripANSI(styled); got != "登录 GitHub" {
-		t.Fatalf("stripANSI = %q", got)
-	}
 }
 
 func TestDiscoveredLoginsAreOfferedFirst(t *testing.T) {
@@ -520,5 +434,97 @@ func TestManualOptionOpensTokenPageWithScopes(t *testing.T) {
 	view := model.View()
 	if !strings.Contains(view, "权限：repo、read:user、user:email") {
 		t.Fatalf("manual step must spell out the scopes:\n%s", view)
+	}
+}
+
+func TestQuitAlwaysAsksForConfirmation(t *testing.T) {
+	model, _ := newTestModel(t)
+
+	// "q" on the accounts screen asks first.
+	model, _ = press(t, model, "q")
+	if model.quit || model.screen != screenConfirm {
+		t.Fatalf("q must ask for confirmation first: screen=%v quit=%v", model.screen, model.quit)
+	}
+	if !strings.Contains(model.confirmPrompt, "要退出 gitra 吗") {
+		t.Fatalf("prompt = %q", model.confirmPrompt)
+	}
+
+	// Cancelling returns to the menu without quitting.
+	model, _ = press(t, model, "n")
+	if model.quit || model.screen != screenAccounts {
+		t.Fatalf("cancel must return to the menu: screen=%v quit=%v", model.screen, model.quit)
+	}
+
+	// Confirming quits.
+	model, _ = press(t, model, "q")
+	model, cmd := press(t, model, "y")
+	model = runCmd(t, model, cmd)
+	if !model.quit {
+		t.Fatal("confirming must quit")
+	}
+}
+
+func TestKeyboardNavigationOnly(t *testing.T) {
+	model, _ := newTestModel(t)
+
+	// Welcome menu: ↓ moves, Enter opens the chosen provider.
+	model, _ = press(t, model, "down")
+	model, _ = press(t, model, "enter")
+	if model.screen != screenLogin || model.login.providerIndex != 1 {
+		t.Fatalf("keyboard selection failed: screen=%v provider=%d", model.screen, model.login.providerIndex)
+	}
+
+	// Esc backs out step by step.
+	model, _ = press(t, model, "esc")
+	model, _ = press(t, model, "esc")
+	if model.screen != screenAccounts {
+		t.Fatalf("esc must return to the accounts screen, got %v", model.screen)
+	}
+}
+
+func TestAccountCardOpensWithEnter(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+
+	model, _ = press(t, model, "enter")
+	if model.screen != screenDetail || model.detailAccount == nil {
+		t.Fatalf("Enter must open the account detail, got %v", model.screen)
+	}
+	model, _ = press(t, model, "esc")
+	if model.screen != screenAccounts {
+		t.Fatalf("Esc must return to accounts, got %v", model.screen)
+	}
+}
+
+func TestTimeoutErrorsAreReadable(t *testing.T) {
+	got := plainError(context.DeadlineExceeded)
+	if !strings.Contains(got, "超时") || strings.Contains(got, "context deadline") {
+		t.Fatalf("timeout translation = %q", got)
+	}
+	if got := plainError(context.Canceled); !strings.Contains(got, "超时") {
+		t.Fatalf("cancel translation = %q", got)
+	}
+}
+
+func TestEscCancelsWaitingState(t *testing.T) {
+	model, _ := newTestModel(t)
+	model.busy = true
+	model.message = "正在登录…"
+
+	model, _ = press(t, model, "esc")
+	if model.busy {
+		t.Fatal("Esc must clear the waiting state")
+	}
+	if !strings.Contains(model.errText, "已停止等待") {
+		t.Fatalf("notice = %q", model.errText)
+	}
+
+	// Any other key is still ignored while waiting.
+	model.busy = true
+	model.errText = ""
+	model, _ = press(t, model, "a")
+	if !model.busy || model.errText != "" {
+		t.Fatalf("keys other than Esc must be ignored while busy: busy=%v err=%q", model.busy, model.errText)
 	}
 }
