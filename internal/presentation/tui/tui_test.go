@@ -765,3 +765,54 @@ func TestListDirsIncludesSymlinkedFolders(t *testing.T) {
 		t.Fatalf("listDirs = %v, want both real and symlinked folders", dirs)
 	}
 }
+
+func TestHelpNeverExceedsWindowWidth(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+
+	for _, width := range []int{60, 80, 100, 120, 200} {
+		model.width = width
+		rendered := model.renderHelp()
+		for _, line := range strings.Split(rendered, "\n") {
+			if got := displayWidth(line); got > width {
+				t.Fatalf("width %d: help line %q is %d cells wide", width, line, got)
+			}
+		}
+		// Every hint must survive: wrapping is allowed, losing text is not.
+		for _, segment := range model.helpSegments() {
+			if !strings.Contains(rendered, segment) {
+				t.Fatalf("width %d: hint %q missing from:\n%s", width, segment, rendered)
+			}
+		}
+	}
+}
+
+func TestHelpWrapsInsteadOfClipping(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+	model.width = 60
+
+	rendered := model.renderHelp()
+	if !strings.Contains(rendered, "\n") {
+		t.Fatalf("a narrow window must wrap the help:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "Esc 返回") {
+		t.Fatalf("the last hint must still be visible:\n%s", rendered)
+	}
+}
+
+func TestProjectRowsUseReadableState(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+	model.detailProjects = []Project{{ID: "bnd_x", Alias: "luna", Path: "/tmp/site", State: "drift"}}
+	view := model.View()
+	if !strings.Contains(view, "（drift）") || !strings.Contains(view, "● 配置被改动") {
+		t.Fatalf("project row must show label and raw state:\n%s", view)
+	}
+}

@@ -61,6 +61,82 @@ func columnsFor(terminalWidth int) int {
 
 func (m Model) columns() int { return columnsFor(m.width) }
 
+// helpSegments returns the key hints for the current screen as separate items,
+// so they can be wrapped across lines on narrow terminals.
+func (m Model) helpSegments() []string {
+	switch m.screen {
+	case screenAccounts:
+		if len(m.accounts) == 0 {
+			return []string{"↑↓ 选择", "Enter 确认", "Q 退出"}
+		}
+		return []string{"↑↓←→ 选择", "Enter 打开", "A 添加账号", "B 绑定项目", "T 测试连接", "Q 退出"}
+	case screenDetail:
+		return []string{"↑↓ 选择项目", "B 绑定文件夹", "D 解除绑定", "T 测试连接", "R 修复配置", "X 删除账号", "Esc 返回"}
+	case screenLogin:
+		return []string{"↑↓ 选择", "Enter 确认", "Esc 返回"}
+	case screenBind:
+		return []string{"↑↓ 移动", "Enter 进入文件夹（在「使用这个文件夹」上＝绑定）", "E 粘贴路径", "Esc 返回"}
+	case screenRemote:
+		return []string{"输入/粘贴仓库地址", "Enter 确认并绑定", "Esc 返回"}
+	case screenConfirm:
+		return []string{"Y 确认", "N 取消"}
+	default:
+		return nil
+	}
+}
+
+// renderHelp wraps the hints so no key hint is ever cut off by the window width.
+func (m Model) renderHelp() string {
+	width := m.width
+	if width <= 0 {
+		width = 80
+	}
+	var lines []string
+	current := ""
+	for _, segment := range m.helpSegments() {
+		segment = truncateToWidth(segment, width-2)
+		candidate := segment
+		if current != "" {
+			candidate = current + "   " + segment
+		}
+		if current != "" && displayWidth(candidate) > width-2 {
+			lines = append(lines, current)
+			current = segment
+			continue
+		}
+		current = candidate
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	var builder strings.Builder
+	for index, line := range lines {
+		if index > 0 {
+			builder.WriteString("\n")
+		}
+		builder.WriteString(line)
+	}
+	return builder.String()
+}
+
+func displayWidth(text string) int { return lipgloss.Width(text) }
+
+// truncateToWidth cuts text to at most width cells, adding an ellipsis.
+func truncateToWidth(text string, width int) string {
+	if width <= 0 || displayWidth(text) <= width {
+		return text
+	}
+	runes := []rune(text)
+	for len(runes) > 0 {
+		runes = runes[:len(runes)-1]
+		candidate := string(runes) + "…"
+		if displayWidth(candidate) <= width {
+			return candidate
+		}
+	}
+	return ""
+}
+
 // View implements tea.Model.
 func (m Model) View() string {
 	if m.quit {
@@ -95,7 +171,7 @@ func (m Model) View() string {
 	if m.errText != "" {
 		builder.WriteString("\n" + errStyle.Render(m.errText))
 	}
-	builder.WriteString("\n\n" + helpStyle.Render(m.helpLine()))
+	builder.WriteString("\n\n" + helpStyle.Render(m.renderHelp()))
 	return builder.String()
 }
 
@@ -212,8 +288,7 @@ func (m Model) viewDetail() string {
 		if index == m.detailSelected {
 			marker = "> "
 		}
-		state := healthLabel(project.State)
-		line := fmt.Sprintf("%s%s\n    %s  %s\n", marker, project.Path, project.State, state)
+		line := fmt.Sprintf("%s%s\n    %s（%s）\n", marker, project.Path, healthLabel(project.State), project.State)
 		if index == m.detailSelected {
 			builder.WriteString(selectedItem.Render(line))
 		} else {
