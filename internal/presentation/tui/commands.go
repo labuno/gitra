@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 
@@ -244,6 +245,48 @@ func (m *Model) remoteAndBindCommand(account domain.Account, path, url string) t
 		}
 		return bindDoneMsg{path: path, alias: account.Alias}
 	}
+}
+
+// lookPath is replaceable so tests can simulate an installed CLI.
+var lookPath = exec.LookPath
+
+// browserLoginCLI reports which official CLI can perform a browser login.
+func browserLoginCLI(providerType domain.ProviderType) (string, bool) {
+	var binary string
+	switch providerType {
+	case domain.ProviderGitHub:
+		binary = "gh"
+	case domain.ProviderGitLab:
+		binary = "glab"
+	default:
+		return "", false
+	}
+	path, err := lookPath(binary)
+	if err != nil {
+		return "", false
+	}
+	return path, true
+}
+
+// browserLoginCommand hands the terminal to the official CLI (gh/glab) so the
+// user authorizes in the browser; gitra resumes and re-reads the session.
+func (m *Model) browserLoginCommand(providerType domain.ProviderType, host string) tea.Cmd {
+	path, ok := browserLoginCLI(providerType)
+	if !ok {
+		return func() tea.Msg {
+			return cliLoginResultMsg{err: fmt.Errorf("没有找到官方客户端")}
+		}
+	}
+	var args []string
+	if providerType == domain.ProviderGitHub {
+		args = []string{"auth", "login", "--hostname", host, "--git-protocol", "https", "--web"}
+	} else {
+		args = []string{"auth", "login", "--hostname", host, "--web"}
+	}
+	command := exec.Command(path, args...)
+	return tea.ExecProcess(command, func(err error) tea.Msg {
+		return cliLoginResultMsg{err: err}
+	})
 }
 
 // detectCommand looks for reusable logins already present on this machine.

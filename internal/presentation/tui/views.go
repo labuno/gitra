@@ -229,9 +229,7 @@ func (m Model) viewLogin() string {
 				builder.WriteString(marker + option + "\n")
 			}
 		}
-		builder.WriteString("\n" + subtitleStyle.Render(
-			"提示：「粘贴访问码」是给自建/企业的情况兜底；\n"+
-				"我们会自动打开创建页面并勾好权限，你只需要点一下创建、复制、粘贴。") + "\n")
+		builder.WriteString("\n" + subtitleStyle.Render(m.loginHint()) + "\n")
 	case 2:
 		builder.WriteString(fmt.Sprintf("粘贴访问码（%s）\n\n", providerLabel(providerAt(m.login.providerIndex))))
 		masked := strings.Repeat("•", len(m.login.token))
@@ -243,13 +241,13 @@ func (m Model) viewLogin() string {
 	return builder.String()
 }
 
-// loginOptions renders discovered logins first and the manual fallback last.
+// loginOptions renders the rows produced by loginOptionList.
 func (m Model) loginOptions() []string {
-	options := make([]string, 0, len(m.login.candidates)+1)
-	for _, candidate := range m.login.candidates {
-		options = append(options, candidate.Label)
+	list := m.loginOptionList()
+	options := make([]string, 0, len(list))
+	for _, option := range list {
+		options = append(options, option.label)
 	}
-	options = append(options, "粘贴访问码（高级：自己去网页创建）")
 	return options
 }
 
@@ -278,6 +276,18 @@ func tokenScopes(providerType domain.ProviderType) string {
 	default:
 		return "仓库读写权限"
 	}
+}
+
+// loginHint explains what the highlighted option will do, including what the
+// resulting credential can be used for.
+func (m Model) loginHint() string {
+	if _, ok := browserLoginCLI(providerAt(m.login.providerIndex)); ok {
+		return "推荐第一个选项：浏览器里点一次「Authorize」即可，不需要创建或粘贴任何内容。\n" +
+			"授权得到的凭据存在系统钥匙串，可用于 pull / push / 合并（本地 commit 本来就不需要凭据），随时可在平台设置里撤销。"
+	}
+	return "这台电脑上没有可直接复用的登录，也没有找到官方客户端。\n" +
+		"「粘贴访问码」= 在平台上创建一个令牌（我们会打开页面并勾好权限）；\n" +
+		"它存在系统钥匙串里，之后 pull / push / 合并都由 git 自动使用，不需要再输入。"
 }
 
 func (m Model) viewBind() string {

@@ -79,8 +79,27 @@ type loginState struct {
 	token         string
 
 	// Discovered reusable logins (gh session, existing SSH keys).
-	detecting  bool
-	candidates []app.Candidate
+	detecting bool
+	// autoPickCLI is set after a successful browser login: the freshly
+	// authorized CLI session is then used without further questions.
+	autoPickCLI bool
+	candidates  []app.Candidate
+}
+
+// loginOptionKind distinguishes what a login row does.
+type loginOptionKind string
+
+const (
+	loginOptionCandidate loginOptionKind = "candidate"
+	loginOptionBrowser   loginOptionKind = "browser"
+	loginOptionManual    loginOptionKind = "manual"
+)
+
+// loginOption is one row of the login screen.
+type loginOption struct {
+	kind      loginOptionKind
+	label     string
+	candidate app.Candidate
 }
 
 type bindState struct {

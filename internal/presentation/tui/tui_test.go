@@ -29,6 +29,7 @@ func newTestModel(t *testing.T) (Model, *bootstrap.App) {
 		}
 		return opened[len(opened)-1]
 	}
+	withFakeLookPath(t, map[string]string{})
 	t.Setenv("GITRA_CONFIG_DIR", t.TempDir())
 	application, err := bootstrap.New()
 	if err != nil {
@@ -423,7 +424,8 @@ func TestManualOptionOpensTokenPageWithScopes(t *testing.T) {
 	updated, _ := model.Update(candidatesMsg{})
 	model = updated.(Model)
 
-	model, cmd := press(t, model, "enter") // only option: manual
+	model.login.methodIndex = len(model.loginOptions()) - 1 // the manual row
+	model, cmd := press(t, model, "enter")
 	if model.login.step != 2 || cmd == nil {
 		t.Fatalf("manual option must open the token step: step=%d", model.login.step)
 	}
@@ -526,5 +528,84 @@ func TestEscCancelsWaitingState(t *testing.T) {
 	model, _ = press(t, model, "a")
 	if !model.busy || model.errText != "" {
 		t.Fatalf("keys other than Esc must be ignored while busy: busy=%v err=%q", model.busy, model.errText)
+	}
+}
+
+func withFakeLookPath(t *testing.T, available map[string]string) {
+	t.Helper()
+	original := lookPath
+	lookPath = func(binary string) (string, error) {
+		if path, ok := available[binary]; ok {
+			return path, nil
+		}
+		return "", fmt.Errorf("%s not found", binary)
+	}
+	t.Cleanup(func() { lookPath = original })
+}
+
+func TestBrowserLoginOptionAppearsWhenCLIExists(t *testing.T) {
+	model, _ := newTestModel(t)
+	withFakeLookPath(t, map[string]string{"gh": "/opt/homebrew/bin/gh"})
+	model, _ = press(t, model, "a")
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+
+	view := model.View()
+	if !strings.Contains(view, "在浏览器里登录 GitHub") {
+		t.Fatalf("browser login option missing:\n%s", view)
+	}
+	if !strings.Contains(view, "不需要创建或粘贴任何内容") {
+		t.Fatalf("hint must explain the frictionless option:\n%s", view)
+	}
+
+	// Choosing it suspends the TUI and starts the official CLI login.
+	model, _ = press(t, model, "down") // past "粘贴访问码" is index order dependent; use first option
+	model.login.methodIndex = 0
+	model, cmd := press(t, model, "enter")
+	if !model.busy || cmd == nil {
+		t.Fatalf("browser login must start: busy=%v", model.busy)
+	}
+	if !strings.Contains(model.message, "浏览器") {
+		t.Fatalf("message = %q", model.message)
+	}
+}
+
+func TestBrowserLoginOptionHiddenWithoutCLI(t *testing.T) {
+	model, _ := newTestModel(t)
+	withFakeLookPath(t, map[string]string{})
+	model, _ = press(t, model, "a")
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+	if strings.Contains(model.View(), "在浏览器里登录") {
+		t.Fatalf("no CLI installed: the browser option must be hidden:\n%s", model.View())
+	}
+}
+
+func TestBrowserLoginResumesIntoCLISession(t *testing.T) {
+	model, _ := newTestModel(t)
+	withFakeLookPath(t, map[string]string{"gh": "/opt/homebrew/bin/gh"})
+	model, _ = press(t, model, "a")
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+
+	// The user finished the browser flow.
+	updated, cmd := model.Update(cliLoginResultMsg{})
+	model = updated.(Model)
+	if !model.login.detecting || !model.login.autoPickCLI || cmd == nil {
+		t.Fatalf("after authorization gitra must re-read the session: detecting=%v autoPick=%v",
+			model.login.detecting, model.login.autoPickCLI)
+	}
+
+	// The freshly authorized CLI session is picked up automatically.
+	updated, cmd = model.Update(candidatesMsg{candidates: []app.Candidate{{
+		Kind: "cli", Source: "gh", Provider: domain.ProviderGitHub, Host: "github.com",
+		Label: "使用本机已登录的 GitHub（无需输入）",
+	}}})
+	model = updated.(Model)
+	if !model.busy || !strings.Contains(model.message, "本机已登录") {
+		t.Fatalf("the authorized session must be used automatically: busy=%v msg=%q", model.busy, model.message)
+	}
+	if cmd == nil {
+		t.Fatal("expected a login command")
 	}
 }

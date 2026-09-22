@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,10 +54,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case candidatesMsg:
 		m.login.detecting = false
 		m.login.candidates = msg.candidates
+		if m.login.autoPickCLI {
+			m.login.autoPickCLI = false
+			for index, candidate := range m.login.candidates {
+				if candidate.Kind == "cli" {
+					m.login.methodIndex = index
+					return m.activateLoginOption(index)
+				}
+			}
+			m.errText = "浏览器授权已完成，但没有读到可用的登录会话，请重试。"
+		}
 		if m.login.methodIndex >= len(m.loginOptions()) {
 			m.login.methodIndex = 0
 		}
 		return m, nil
+
+	case cliLoginResultMsg:
+		m.busy = false
+		if msg.err != nil {
+			m.errText = "浏览器登录没有完成：" + plainError(msg.err)
+			return m, nil
+		}
+		m.message = "已授权，正在读取账号…"
+		m.login.detecting = true
+		m.login.autoPickCLI = true
+		return m, m.detectCommand(providerAt(m.login.providerIndex), "")
 
 	case openBrowserMsg:
 		if msg.err != nil {
@@ -389,24 +411,64 @@ func (m Model) activateWelcome(item welcomeItem) (tea.Model, tea.Cmd) {
 // activateLoginOption runs the chosen discovered login, or falls back to the
 // manual access code (which opens the prefilled token page).
 func (m Model) activateLoginOption(index int) (tea.Model, tea.Cmd) {
-	if index < 0 || index >= len(m.loginOptions()) {
+	options := m.loginOptionList()
+	if index < 0 || index >= len(options) {
 		return m, nil
 	}
-	if index < len(m.login.candidates) {
-		candidate := m.login.candidates[index]
+	option := options[index]
+	switch option.kind {
+	case loginOptionCandidate:
 		m.busy = true
-		if candidate.Kind == "ssh-key" {
-			m.message = "正在使用已有密钥 " + filepath.Base(candidate.KeyPath) + " …"
-			return m, m.sshKeyLoginCommand(candidate)
+		if option.candidate.Kind == "ssh-key" {
+			m.message = "正在使用已有密钥 " + filepath.Base(option.candidate.KeyPath) + " …"
+			return m, m.sshKeyLoginCommand(option.candidate)
 		}
 		m.message = "正在使用本机已登录的账号…"
 		return m, m.loginCommand(providerAt(m.login.providerIndex), "", true)
+	case loginOptionBrowser:
+		providerType := providerAt(m.login.providerIndex)
+		host := defaultHost(providerType)
+		m.message = "请在浏览器里完成授权…"
+		m.busy = true
+		return m, m.browserLoginCommand(providerType, host)
+	default:
+		m.login.step = 2
+		m.login.token = ""
+		url := tokenPageURL(providerAt(m.login.providerIndex), "")
+		m.message = "已打开创建访问码的页面"
+		return m, openBrowserCmd(url)
 	}
-	m.login.step = 2
-	m.login.token = ""
-	url := tokenPageURL(providerAt(m.login.providerIndex), "")
-	m.message = "已打开创建访问码的页面"
-	return m, openBrowserCmd(url)
+}
+
+// loginOptionList is the single source of truth for the login screen rows.
+func (m Model) loginOptionList() []loginOption {
+	options := make([]loginOption, 0, len(m.login.candidates)+2)
+	for _, candidate := range m.login.candidates {
+		options = append(options, loginOption{kind: loginOptionCandidate, label: candidate.Label, candidate: candidate})
+	}
+	providerType := providerAt(m.login.providerIndex)
+	if _, ok := browserLoginCLI(providerType); ok {
+		client := "gh"
+		if providerType == domain.ProviderGitLab {
+			client = "glab"
+		}
+		options = append(options, loginOption{
+			kind:  loginOptionBrowser,
+			label: fmt.Sprintf("在浏览器里登录 %s（使用官方 %s 客户端，推荐）", providerLabel(providerType), client),
+		})
+	}
+	options = append(options, loginOption{
+		kind:  loginOptionManual,
+		label: "粘贴访问码（高级：自己去网页创建）",
+	})
+	return options
+}
+
+func defaultHost(providerType domain.ProviderType) string {
+	if endpoint, ok := domain.DefaultEndpoint(providerType); ok {
+		return endpoint.Host
+	}
+	return ""
 }
 
 // requestQuit opens the confirmation dialog instead of quitting immediately.

@@ -59,3 +59,9 @@ type openBrowserMsg struct {
 
 // quitConfirmedMsg fires after the user confirms quitting.
 type quitConfirmedMsg struct{}
+
+// cliLoginResultMsg reports the outcome of handing the terminal to the
+// provider's official CLI for a browser login.
+type cliLoginResultMsg struct {
+	err error
+}
