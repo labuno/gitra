@@ -1,0 +1,558 @@
+{
+  "schema_version": 1,
+  "plan_id": "gitra-v1-cli",
+  "source_documents": [
+    {
+      "id": "plan",
+      "path": "docs/plans/gitra-v1-cli-plan.md",
+      "sha256": "ed8d5d6ee9c429e0f5028af3ad7579a9d7b162501972bdf6bf9768cce84524b0",
+      "role": "primary"
+    },
+    {
+      "id": "baseline",
+      "path": "docs/gitra-v1-implementation-baseline.md",
+      "sha256": "7518af20dc781fb25c8e2458e578852d6b843b6cceb6887805b8cb432713981f",
+      "role": "constraint"
+    },
+    {
+      "id": "design",
+      "path": "docs/gitra-architecture-development-design.md",
+      "sha256": "982b2f057e897572722b30b9255c0544f0be79845cd6ace307ee2c54323f958d",
+      "role": "constraint"
+    },
+    {
+      "id": "addendum",
+      "path": "docs/gitra-v1-login-onboarding-design.md",
+      "sha256": "11ca99027995416d9a7ff4492e19f8ccbe6a4673e9e185775b90e47ece04ddb9",
+      "role": "constraint"
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "objective",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-OBJ-01"
+      ],
+      "rationale": "objective 维度提取了 1 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "scope",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-SCOPE-01",
+        "REQ-SCOPE-02",
+        "REQ-SCOPE-03",
+        "REQ-SCOPE-04"
+      ],
+      "rationale": "scope 维度提取了 4 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "steps",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STEP-01",
+        "REQ-STEP-02",
+        "REQ-STEP-03",
+        "REQ-STEP-04",
+        "REQ-STEP-05"
+      ],
+      "rationale": "steps 维度提取了 5 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "interfaces",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-IF-01",
+        "REQ-IF-02",
+        "REQ-IF-03",
+        "REQ-IF-04",
+        "REQ-IF-05",
+        "REQ-IF-06",
+        "REQ-IF-07"
+      ],
+      "rationale": "interfaces 维度提取了 7 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "work_packages",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-WP-01",
+        "REQ-WP-02",
+        "REQ-WP-03",
+        "REQ-WP-04",
+        "REQ-WP-05"
+      ],
+      "rationale": "work_packages 维度提取了 5 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "test_matrix",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-TEST-01",
+        "REQ-TEST-02",
+        "REQ-TEST-03",
+        "REQ-TEST-04"
+      ],
+      "rationale": "test_matrix 维度提取了 4 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "verification",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-VER-01",
+        "REQ-VER-02"
+      ],
+      "rationale": "verification 维度提取了 2 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "done_criteria",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-DONE-01",
+        "REQ-DONE-02"
+      ],
+      "rationale": "done_criteria 维度提取了 2 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "stop_conditions",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STOP-01",
+        "REQ-STOP-02"
+      ],
+      "rationale": "stop_conditions 维度提取了 2 条原子 Requirement 并映射到执行节点。"
+    },
+    {
+      "id": "external_sources",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-EXT-01",
+        "REQ-EXT-02"
+      ],
+      "rationale": "external_sources 维度提取了 2 条原子 Requirement 并映射到执行节点。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-OBJ-01",
+      "kind": "objective",
+      "source_document": "plan",
+      "source_section": "## Objective",
+      "source_quote": "让 gitra 在没有 TUI 的情况下完整可用",
+      "statement": "CLI 覆盖账号生命周期与仓库绑定，支持 --json/--verbose 与基线退出码。",
+      "verification": "CLIC-05 E2E Gate",
+      "node_ids": [
+        "CLIC-01",
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-01",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "新增 Application 层 `AccountService`",
+      "statement": "新增 AccountService（Create/Update/Delete/Get/GetByAlias/List）与 update 后 reconcile。",
+      "verification": "app 单测",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-02",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Non-goals",
+      "source_quote": "`account test` 与 Provider 联网验证（Milestone 3）",
+      "statement": "account test 与联网验证不在本 Plan。",
+      "verification": "命令树不含 test 子命令",
+      "node_ids": [
+        "CLIC-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-03",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Non-goals",
+      "source_quote": "M2 全部非交互，缺参即报错（exit 2）",
+      "statement": "CLI 不提问，缺参/非法参数返回 exit 2。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-02",
+        "CLIC-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-04",
+      "kind": "scope",
+      "source_document": "baseline",
+      "source_section": "## 5.3 Account Remove",
+      "source_quote": "ErrAccountInUse",
+      "statement": "有绑定时禁止直接删除账号。",
+      "verification": "app 单测",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-01",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "bootstrap + AccountService",
+      "statement": "先完成组合根与 AccountService。",
+      "verification": "执行图依赖顺序",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-02",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "CLI foundation（root、错误映射、--verbose、--json）",
+      "statement": "其次完成 CLI 基座。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-02"
+      ]
+    },
+    {
+      "id": "REQ-STEP-03",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "account add/list/show/edit/remove",
+      "statement": "再次完成 account 五个子命令。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-03"
+      ]
+    },
+    {
+      "id": "REQ-STEP-04",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "bind/unbind/status",
+      "statement": "然后完成绑定三命令。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-STEP-05",
+      "kind": "steps",
+      "source_document": "baseline",
+      "source_section": "## 5.2 Account Edit",
+      "source_quote": "Reconcile bound repositories",
+      "statement": "Account 保存后必须 reconcile 已绑定仓库。",
+      "verification": "app 单测断言传播",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-01",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "AccountService 签名按基线 §25.1；CLI 只依赖 app 层",
+      "statement": "端口签名沿用基线，CLI 不得直接访问 storage/git。",
+      "verification": "代码审查 + 包依赖",
+      "node_ids": [
+        "CLIC-01",
+        "CLIC-02"
+      ]
+    },
+    {
+      "id": "REQ-IF-02",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "gitra account add --alias A --provider github",
+      "statement": "account add 的 flag 形态固定。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-03",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "gitra bind <alias> [path]",
+      "statement": "绑定命令形态与默认 path。",
+      "verification": "CLI 集成测试",
+      "node_ids": [
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-04",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "JSON 契约：`schema_version: 1`",
+      "statement": "JSON 输出固定 schema_version 且字段只增不改。",
+      "verification": "JSON 断言",
+      "node_ids": [
+        "CLIC-02",
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-05",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 25. Application Interface Baseline",
+      "source_quote": "GetByAlias(ctx context.Context, alias string) (Account, error)",
+      "statement": "AccountService 必须提供按 alias 解析。",
+      "verification": "app 单测",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-06",
+      "kind": "interfaces",
+      "source_document": "addendum",
+      "source_section": "# 附录 A：V1.0 决策冻结（P0 清零）",
+      "source_quote": "// gitra status --json（已绑定）",
+      "statement": "status --json 形状遵循 A.1。",
+      "verification": "JSON 断言",
+      "node_ids": [
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-07",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 35. CLI Exit Code 基线",
+      "source_quote": "0 success",
+      "statement": "退出码遵循基线 §35。",
+      "verification": "退出码矩阵测试",
+      "node_ids": [
+        "CLIC-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-01",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### CLI-01 Bootstrap & AccountService",
+      "source_quote": "bootstrap 组合根 + AccountService",
+      "statement": "WP CLI-01 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-02",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### CLI-02 CLI Foundation",
+      "source_quote": "Cobra root、全局 flags、错误到退出码映射",
+      "statement": "WP CLI-02 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "CLIC-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-03",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### CLI-03 Account Commands",
+      "source_quote": "account add / list / show / edit / remove",
+      "statement": "WP CLI-03 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "CLIC-03"
+      ]
+    },
+    {
+      "id": "REQ-WP-04",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### CLI-04 Bind / Unbind / Status Commands",
+      "source_quote": "bind / unbind / status 三个命令",
+      "statement": "WP CLI-04 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-WP-05",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### CLI-05 CLI End-to-End Regression",
+      "source_quote": "脚本化全流程回归",
+      "statement": "WP CLI-05 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-TEST-01",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "app 单测（AccountService：create/update/delete 守卫/reconcile 传播）",
+      "statement": "AccountService 必须有单元测试。",
+      "verification": "go test ./internal/app/...",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-TEST-02",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "CLI 集成测试（临时 GITRA_CONFIG_DIR；退出码与 JSON）",
+      "statement": "CLI 必须有隔离环境的集成测试。",
+      "verification": "go test ./internal/presentation/...",
+      "node_ids": [
+        "CLIC-03",
+        "CLIC-04"
+      ]
+    },
+    {
+      "id": "REQ-TEST-03",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "脚本化 E2E",
+      "statement": "必须有全流程 E2E。",
+      "verification": "go test ./internal/e2e/...",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-TEST-04",
+      "kind": "test_matrix",
+      "source_document": "baseline",
+      "source_section": "## 53.2 Application Unit Test",
+      "source_quote": "FakeAccountStore",
+      "statement": "Application 单测使用 fake store。",
+      "verification": "app 单测",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-VER-01",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "每节点 go test ./... + go vet ./...",
+      "statement": "每节点全量 Gate。",
+      "verification": "执行图证据",
+      "node_ids": [
+        "CLIC-02",
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-VER-02",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "CLI 输出与文档示例一致",
+      "statement": "输出与冻结形状一致。",
+      "verification": "JSON 断言",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-DONE-01",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "§47 验收流程在本地可完整走通",
+      "statement": "本地全流程可完成。",
+      "verification": "E2E 回归",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-DONE-02",
+      "kind": "done_criteria",
+      "source_document": "baseline",
+      "source_section": "# 47. Milestone 2 - CLI",
+      "source_quote": "全流程可完成。",
+      "statement": "CLI 验收流程完整。",
+      "verification": "E2E 回归",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-STOP-01",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要修改 Application 层公共语义才能实现 CLI",
+      "statement": "出现该情况必须停止上报。",
+      "verification": "执行记录",
+      "node_ids": [
+        "CLIC-01"
+      ]
+    },
+    {
+      "id": "REQ-STOP-02",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要网络或真实账号才能通过自动化测试",
+      "statement": "测试必须离线可跑。",
+      "verification": "执行记录",
+      "node_ids": [
+        "CLIC-05"
+      ]
+    },
+    {
+      "id": "REQ-EXT-01",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "Cobra（基线 §19.1）",
+      "statement": "CLI 框架为 Cobra。",
+      "verification": "go.mod 依赖",
+      "node_ids": [
+        "CLIC-02"
+      ]
+    },
+    {
+      "id": "REQ-EXT-02",
+      "kind": "external_sources",
+      "source_document": "baseline",
+      "source_section": "## 19.1 CLI",
+      "source_quote": "github.com/spf13/cobra",
+      "statement": "依赖路径固定。",
+      "verification": "go.mod 断言",
+      "node_ids": [
+        "CLIC-02"
+      ]
+    }
+  ],
+  "review": {
+    "status": "PASS",
+    "unresolved_requirements": [],
+    "unjustified_nodes": [],
+    "reviewed_at": "2026-09-22T20:10:00+08:00"
+  }
+}

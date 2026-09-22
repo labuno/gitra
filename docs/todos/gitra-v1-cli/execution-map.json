@@ -1,0 +1,282 @@
+{
+  "schema_version": 5,
+  "plan_id": "gitra-v1-cli",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/gitra-v1-cli-plan.md",
+  "traceability": "traceability.json",
+  "work_packages": [
+    "CLI-01",
+    "CLI-02",
+    "CLI-03",
+    "CLI-04",
+    "CLI-05"
+  ],
+  "nodes": [
+    {
+      "id": "CLIC-01",
+      "title": "Bootstrap & AccountService",
+      "work_packages": [
+        "CLI-01"
+      ],
+      "source_sections": [
+        "### CLI-01 Bootstrap & AccountService",
+        "## Steps"
+      ],
+      "todo": "CLIC-01-bootstrap-account-service.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:account-service",
+          "kind": "service",
+          "description": "bootstrap 组合根与 AccountService"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/app/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/app/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:31:36+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:31:36+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:31:36+08:00"
+        }
+      ]
+    },
+    {
+      "id": "CLIC-02",
+      "title": "CLI Foundation",
+      "work_packages": [
+        "CLI-02"
+      ],
+      "source_sections": [
+        "### CLI-02 CLI Foundation",
+        "## Interfaces"
+      ],
+      "todo": "CLIC-02-cli-foundation.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "CLIC-01"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:account-service"
+      ],
+      "produces": [
+        {
+          "id": "artifact:cli-foundation",
+          "kind": "cli",
+          "description": "root 命令、退出码映射、JSON 基座"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:32:54+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:32:54+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:32:54+08:00"
+        }
+      ]
+    },
+    {
+      "id": "CLIC-03",
+      "title": "Account Commands",
+      "work_packages": [
+        "CLI-03"
+      ],
+      "source_sections": [
+        "### CLI-03 Account Commands",
+        "## Interfaces"
+      ],
+      "todo": "CLIC-03-account-commands.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "CLIC-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:cli-foundation"
+      ],
+      "produces": [
+        {
+          "id": "artifact:cli-account",
+          "kind": "cli",
+          "description": "account add/list/show/edit/remove"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        }
+      ]
+    },
+    {
+      "id": "CLIC-04",
+      "title": "Bind / Unbind / Status Commands",
+      "work_packages": [
+        "CLI-04"
+      ],
+      "source_sections": [
+        "### CLI-04 Bind / Unbind / Status Commands",
+        "## Interfaces"
+      ],
+      "todo": "CLIC-04-bind-status-commands.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "CLIC-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:cli-foundation"
+      ],
+      "produces": [
+        {
+          "id": "artifact:cli-binding",
+          "kind": "cli",
+          "description": "bind/unbind/status 与 A.1 JSON"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        }
+      ]
+    },
+    {
+      "id": "CLIC-05",
+      "title": "CLI End-to-End Regression",
+      "work_packages": [
+        "CLI-05"
+      ],
+      "source_sections": [
+        "### CLI-05 CLI End-to-End Regression",
+        "## Test Matrix"
+      ],
+      "todo": "CLIC-05-cli-e2e.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "CLIC-03",
+        "CLIC-04"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:cli-account",
+        "artifact:cli-binding"
+      ],
+      "produces": [
+        {
+          "id": "artifact:cli-e2e",
+          "kind": "e2e",
+          "description": "CLI 全流程与退出码矩阵回归"
+        }
+      ],
+      "integration_gates": [
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:34:40+08:00"
+        }
+      ]
+    }
+  ]
+}

@@ -25,3 +25,11 @@ func generateBindingID() (domain.BindingID, error) {
 	}
 	return domain.BindingID(id), nil
 }
+
+func generateAccountID() (domain.AccountID, error) {
+	id, err := newRandomID("acc_")
+	if err != nil {
+		return "", err
+	}
+	return domain.AccountID(id), nil
+}
