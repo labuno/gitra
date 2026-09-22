@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "plan_id": "gitra-v1-verify",
+  "source_documents": [
+    {
+      "id": "plan",
+      "path": "docs/plans/gitra-v1-verify-plan.md",
+      "sha256": "8d8378b23ce9ad22077a7e751df617ea6b694ca72ed38cc903395d5781421bdb",
+      "role": "primary"
+    },
+    {
+      "id": "baseline",
+      "path": "docs/gitra-v1-implementation-baseline.md",
+      "sha256": "7518af20dc781fb25c8e2458e578852d6b843b6cceb6887805b8cb432713981f",
+      "role": "constraint"
+    },
+    {
+      "id": "design",
+      "path": "docs/gitra-architecture-development-design.md",
+      "sha256": "982b2f057e897572722b30b9255c0544f0be79845cd6ace307ee2c54323f958d",
+      "role": "constraint"
+    },
+    {
+      "id": "addendum",
+      "path": "docs/gitra-v1-login-onboarding-design.md",
+      "sha256": "11ca99027995416d9a7ff4492e19f8ccbe6a4673e9e185775b90e47ece04ddb9",
+      "role": "constraint"
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "objective",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-OBJ-01"
+      ],
+      "rationale": "objective 维度提取 1 条原子 Requirement。"
+    },
+    {
+      "id": "scope",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-SCOPE-01",
+        "REQ-SCOPE-02",
+        "REQ-SCOPE-03",
+        "REQ-SCOPE-04"
+      ],
+      "rationale": "scope 维度提取 4 条原子 Requirement。"
+    },
+    {
+      "id": "steps",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STEP-01",
+        "REQ-STEP-02",
+        "REQ-STEP-03"
+      ],
+      "rationale": "steps 维度提取 3 条原子 Requirement。"
+    },
+    {
+      "id": "interfaces",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-IF-01",
+        "REQ-IF-02",
+        "REQ-IF-03",
+        "REQ-IF-04"
+      ],
+      "rationale": "interfaces 维度提取 4 条原子 Requirement。"
+    },
+    {
+      "id": "work_packages",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-WP-01",
+        "REQ-WP-02",
+        "REQ-WP-03"
+      ],
+      "rationale": "work_packages 维度提取 3 条原子 Requirement。"
+    },
+    {
+      "id": "test_matrix",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-TEST-01",
+        "REQ-TEST-02",
+        "REQ-TEST-03",
+        "REQ-TEST-04"
+      ],
+      "rationale": "test_matrix 维度提取 4 条原子 Requirement。"
+    },
+    {
+      "id": "verification",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-VER-01"
+      ],
+      "rationale": "verification 维度提取 1 条原子 Requirement。"
+    },
+    {
+      "id": "done_criteria",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-DONE-01",
+        "REQ-DONE-02"
+      ],
+      "rationale": "done_criteria 维度提取 2 条原子 Requirement。"
+    },
+    {
+      "id": "stop_conditions",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STOP-01",
+        "REQ-STOP-02"
+      ],
+      "rationale": "stop_conditions 维度提取 2 条原子 Requirement。"
+    },
+    {
+      "id": "external_sources",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-EXT-01",
+        "REQ-EXT-02"
+      ],
+      "rationale": "external_sources 维度提取 2 条原子 Requirement。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-OBJ-01",
+      "kind": "objective",
+      "source_document": "plan",
+      "source_section": "## Objective",
+      "source_quote": "提供显式、可脚本化的账号验证",
+      "statement": "HTTPS 与 SSH 两条验证路径均可用。",
+      "verification": "VER-03 E2E",
+      "node_ids": [
+        "VER-01",
+        "VER-02",
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-01",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "`ports.SSH` 的真实实现（sshcli）",
+      "statement": "实现真实 ssh 调用并透传原始结果。",
+      "verification": "sshcli 单测",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-02",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "Provider SSH 响应解析（基线 §4.6）",
+      "statement": "按 Provider 解析认证用户名，不只看 exit code。",
+      "verification": "fixture 测试",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-03",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "`app.VerificationService`",
+      "statement": "提供统一验证用例与结果模型。",
+      "verification": "服务单测",
+      "node_ids": [
+        "VER-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-04",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "CLI `gitra account test <alias> [--json]`",
+      "statement": "提供命令行验证与 JSON。",
+      "verification": "CLI 测试",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-STEP-01",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "sshcli adapter 与 Provider SSH 解析",
+      "statement": "先实现底层 ssh 与解析。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-02",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "VerificationService（双路径 + 错误分类）",
+      "statement": "其次实现服务。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "VER-02"
+      ]
+    },
+    {
+      "id": "REQ-STEP-03",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "CLI `account test` 与离线回归（fixture + httptest）",
+      "statement": "最后实现命令与回归。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-01",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "ports.SSH.Test(ctx, SSHTestRequest{Host, User, Port, PrivateKeyPath}) (SSHTestResult, error)",
+      "statement": "端口签名沿用基线 §16.2。",
+      "verification": "编译期 fake 断言",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-02",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "ParseSSHVerification(stdout, stderr string) (username string, ok bool)",
+      "statement": "Provider 解析入口固定。",
+      "verification": "fixture 测试",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-03",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "\"actual_username\":\"...\"",
+      "statement": "JSON 形状固定。",
+      "verification": "CLI JSON 断言",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-04",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "## 4.6 `ssh -T` 成功不能只看 Exit Code",
+      "source_quote": "Provider 决定“认证成功”的语义",
+      "statement": "认证判定归属 Provider，不得下沉到业务层。",
+      "verification": "代码审查 + 单测",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-01",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### VERIFY-01 SSH Adapter & Provider SSH Parsing",
+      "source_quote": "sshcli 实现 + GitHub/GitLab/Gitea 的 `ssh -T` 响应解析与 fixture 测试",
+      "statement": "WP VERIFY-01 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-02",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### VERIFY-02 VerificationService",
+      "source_quote": "按策略分流的验证用例",
+      "statement": "WP VERIFY-02 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "VER-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-03",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### VERIFY-03 CLI account test & Regression",
+      "source_quote": "`gitra account test <alias> [--json]` 命令与离线回归",
+      "statement": "WP VERIFY-03 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-TEST-01",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "sshcli 单测（argv 构造、原始结果透传、超时/缺失二进制）",
+      "statement": "sshcli 可离线测试。",
+      "verification": "go test ./internal/adapters/sshcli/...",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-TEST-02",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "Provider 解析 fixture（成功/失败/未知响应）",
+      "statement": "解析有 fixture 覆盖。",
+      "verification": "go test ./internal/adapters/provider/...",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-TEST-03",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "VerificationService 单测（成功、用户名不匹配、token 失效、解析失败）",
+      "statement": "四类结果均有测试。",
+      "verification": "go test ./internal/app/...",
+      "node_ids": [
+        "VER-02"
+      ]
+    },
+    {
+      "id": "REQ-TEST-04",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "CLI 集成测试（exit 0/3/5 与 JSON 形状）",
+      "statement": "CLI 退出码与 JSON 正确。",
+      "verification": "go test ./internal/presentation/...",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-VER-01",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "每节点 `go test ./...` + `go vet ./...`；全流程离线可跑",
+      "statement": "离线 Gate 全绿。",
+      "verification": "执行图证据",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-DONE-01",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "`gitra account test` 能区分：本地配置无效、认证成功、用户名不匹配、认证失败、网络/进程失败、无法识别的响应",
+      "statement": "六类结果可区分。",
+      "verification": "服务单测 + CLI 测试",
+      "node_ids": [
+        "VER-02",
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-DONE-02",
+      "kind": "done_criteria",
+      "source_document": "baseline",
+      "source_section": "# 48. Milestone 3 - Provider Verification",
+      "source_quote": "支持显式账号连接验证。",
+      "statement": "M3 目标达成。",
+      "verification": "VER-03 E2E",
+      "node_ids": [
+        "VER-03"
+      ]
+    },
+    {
+      "id": "REQ-STOP-01",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要真实网络或真实账号才能通过自动化测试",
+      "statement": "测试必须离线。",
+      "verification": "执行记录",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-STOP-02",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要把 Provider 特有判断下沉到业务层（违反基线 §21）",
+      "statement": "架构边界不得破坏。",
+      "verification": "代码审查",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-01",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "OpenSSH 客户端（开发机 9.9p2）",
+      "statement": "依赖系统 ssh。",
+      "verification": "sshcli 集成测试",
+      "node_ids": [
+        "VER-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-02",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "Provider REST API（HTTPS 路径复用 V1.1 已实现 client）",
+      "statement": "HTTPS 路径复用既有 client。",
+      "verification": "httptest",
+      "node_ids": [
+        "VER-02"
+      ]
+    }
+  ],
+  "review": {
+    "status": "PASS",
+    "unresolved_requirements": [],
+    "unjustified_nodes": [],
+    "reviewed_at": "2026-09-22T22:40:00+08:00"
+  }
+}

@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	_ ports.TokenProvider   = (*Adapter)(nil)
-	_ ports.ProfileProvider = (*Adapter)(nil)
+	_ ports.TokenProvider     = (*Adapter)(nil)
+	_ ports.ProfileProvider   = (*Adapter)(nil)
+	_ ports.SSHIdentityParser = (*Adapter)(nil)
 )
 
 // Adapter implements ports.TokenProvider and ports.ProfileProvider.
@@ -100,4 +101,18 @@ func (a *Adapter) Profile(ctx context.Context, providerType domain.ProviderType,
 		Email:         profile.Email,
 		EmailFallback: profile.EmailFallback,
 	}, nil
+}
+
+// ParseSSHIdentity implements ports.SSHIdentityParser.
+func (a *Adapter) ParseSSHIdentity(_ context.Context, providerType domain.ProviderType, stdout, stderr string) (string, bool) {
+	switch providerType {
+	case domain.ProviderGitHub:
+		return github.ParseSSHVerification(stdout, stderr)
+	case domain.ProviderGitLab:
+		return gitlab.ParseSSHVerification(stdout, stderr)
+	case domain.ProviderGitea:
+		return gitea.ParseSSHVerification(stdout, stderr)
+	default:
+		return "", false
+	}
 }

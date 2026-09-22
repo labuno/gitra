@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -48,9 +49,36 @@ func (a *App) Execute(ctx context.Context, args []string) int {
 	}
 	if err := root.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(a.Stderr, err)
+		if isUsageError(err) {
+			return ExitCodeFor(fmt.Errorf("%w: %v", errUsage, err))
+		}
 		return ExitCodeFor(err)
 	}
 	return 0
+}
+
+// isUsageError recognises cobra's command-line validation failures so they map
+// to exit code 2 (baseline §35) instead of the generic failure code.
+func isUsageError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	for _, fragment := range []string{
+		"accepts ",
+		"requires at least",
+		"requires at most",
+		"unknown command",
+		"unknown flag",
+		"unknown shorthand flag",
+		"required flag",
+		"invalid argument",
+	} {
+		if strings.Contains(message, fragment) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *App) newRootCmd() *cobra.Command {

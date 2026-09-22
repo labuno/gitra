@@ -12,6 +12,7 @@ import (
 	"github.com/zhanhd/gitra/internal/adapters/provider/router"
 	"github.com/zhanhd/gitra/internal/adapters/runner"
 	"github.com/zhanhd/gitra/internal/adapters/secretstore"
+	"github.com/zhanhd/gitra/internal/adapters/sshcli"
 	"github.com/zhanhd/gitra/internal/adapters/storage"
 	"github.com/zhanhd/gitra/internal/app"
 	"github.com/zhanhd/gitra/internal/strategies/auth"
@@ -25,24 +26,30 @@ import (
 
 // App is the wired application: ports plus the services built on them.
 type App struct {
-	Deps       app.Deps
-	Accounts   *app.AccountService
-	Bindings   *app.BindingService
-	Reconciler *app.Reconciler
-	Login      *app.LoginService
+	Deps         app.Deps
+	Accounts     *app.AccountService
+	Bindings     *app.BindingService
+	Reconciler   *app.Reconciler
+	Login        *app.LoginService
+	Verification *app.VerificationService
 }
 
 // NewFromDeps builds every service around explicit dependencies. It is used by
 // New and by tests that inject fake token/profile providers.
-func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.ProfileProvider) *App {
+func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.ProfileProvider, parsers ...ports.SSHIdentityParser) *App {
 	bindings := app.NewBindingService(deps)
 	accounts := app.NewAccountService(deps, bindings)
+	var parser ports.SSHIdentityParser
+	if len(parsers) > 0 {
+		parser = parsers[0]
+	}
 	return &App{
-		Deps:       deps,
-		Accounts:   accounts,
-		Bindings:   bindings,
-		Reconciler: app.NewReconciler(deps),
-		Login:      app.NewLoginService(deps, accounts, tokens, profiles),
+		Deps:         deps,
+		Accounts:     accounts,
+		Bindings:     bindings,
+		Reconciler:   app.NewReconciler(deps),
+		Login:        app.NewLoginService(deps, accounts, tokens, profiles),
+		Verification: app.NewVerificationService(deps, profiles, parser),
 	}
 }
 
@@ -87,10 +94,11 @@ func New() (*App, error) {
 
 		Secrets:           secrets,
 		CredentialHelpers: secretstore.NewHelperResolver(gitRunner, configDir),
+		SSH:               sshcli.New(gitRunner),
 	}
 
 	loginAdapter := router.New(gitRunner, os.Stdin)
-	return NewFromDeps(deps, loginAdapter, loginAdapter), nil
+	return NewFromDeps(deps, loginAdapter, loginAdapter, loginAdapter), nil
 }
 
 type systemClock struct{}

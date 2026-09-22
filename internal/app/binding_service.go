@@ -28,6 +28,8 @@ type Deps struct {
 	// Secrets and CredentialHelpers serve the https-token strategy (V1.1).
 	Secrets           ports.SecretStore
 	CredentialHelpers ports.CredentialHelperResolver
+	// SSH serves explicit account verification for ssh-key accounts.
+	SSH ports.SSH
 }
 
 // BindingService implements bind / unbind / status.

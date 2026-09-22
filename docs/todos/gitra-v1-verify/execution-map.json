@@ -1,0 +1,175 @@
+{
+  "schema_version": 5,
+  "plan_id": "gitra-v1-verify",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/gitra-v1-verify-plan.md",
+  "traceability": "traceability.json",
+  "work_packages": [
+    "VERIFY-01",
+    "VERIFY-02",
+    "VERIFY-03"
+  ],
+  "nodes": [
+    {
+      "id": "VER-01",
+      "title": "SSH Adapter & Provider SSH Parsing",
+      "work_packages": [
+        "VERIFY-01"
+      ],
+      "source_sections": [
+        "### VERIFY-01 SSH Adapter & Provider SSH Parsing",
+        "## Interfaces"
+      ],
+      "todo": "VER-01-ssh-adapter.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:ssh-adapter",
+          "kind": "adapter",
+          "description": "sshcli + Provider SSH 解析"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/adapters/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/adapters/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        }
+      ]
+    },
+    {
+      "id": "VER-02",
+      "title": "VerificationService",
+      "work_packages": [
+        "VERIFY-02"
+      ],
+      "source_sections": [
+        "### VERIFY-02 VerificationService",
+        "## Objective"
+      ],
+      "todo": "VER-02-verification-service.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "VER-01"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:ssh-adapter"
+      ],
+      "produces": [
+        {
+          "id": "artifact:verification-service",
+          "kind": "service",
+          "description": "双路径验证用例与结果模型"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/app/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/app/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        }
+      ]
+    },
+    {
+      "id": "VER-03",
+      "title": "CLI account test & Regression",
+      "work_packages": [
+        "VERIFY-03"
+      ],
+      "source_sections": [
+        "### VERIFY-03 CLI account test & Regression",
+        "## Test Matrix"
+      ],
+      "todo": "VER-03-account-test-cli.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "VER-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:verification-service"
+      ],
+      "produces": [
+        {
+          "id": "artifact:verify-cli",
+          "kind": "cli",
+          "description": "account test 命令与离线回归"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:48:00+08:00"
+        }
+      ]
+    }
+  ]
+}

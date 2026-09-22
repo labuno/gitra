@@ -25,6 +25,7 @@ func (a *App) newAccountCmd() *cobra.Command {
 		a.newAccountShowCmd(),
 		a.newAccountEditCmd(),
 		a.newAccountRemoveCmd(),
+		a.newAccountTestCmd(),
 	)
 	return cmd
 }

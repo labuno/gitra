@@ -73,6 +73,12 @@ func TestExecuteHelpAndUnknownCommand(t *testing.T) {
 	if code := app.Execute(nil, []string{"--unknown-flag"}); code != 2 {
 		t.Fatalf("unknown flag exit code = %d, want 2", code)
 	}
+	if code := app.Execute(nil, []string{"account", "show"}); code != 2 {
+		t.Fatalf("missing argument exit code = %d, want 2", code)
+	}
+	if code := app.Execute(nil, []string{"account", "test"}); code != 2 {
+		t.Fatalf("missing test argument exit code = %d, want 2", code)
+	}
 }
 
 func TestVerboseJournal(t *testing.T) {
