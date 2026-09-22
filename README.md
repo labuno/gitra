@@ -96,6 +96,31 @@ gitra unbind [path]                    # 还原绑定前状态
   TUI 内克隆仓库向导、Windows 作为一等平台。
 - SSH 密钥若带口令，需要先 `ssh-add` 到 agent（探测过程不会弹口令提示）。
 
+## 发布与自动化（GitHub Actions）
+
+- **CI**（`.github/workflows/ci.yml`）：`main` 分支推送与 Pull Request 会跑 gofmt/vet/`go test`/构建，
+  并在 macOS 上构建一次应用包做冒烟（防止平台相关退化）。
+- **Release**（`.github/workflows/release.yml`）：推送 **以 `v` 开头的 tag** 即自动构建并发布：
+
+  ```bash
+  git tag v0.1.0          # 例如 v0.1.0、v1.2.3-rc1
+  git push origin v0.1.0  # 触发 Release workflow
+  ```
+
+  产物包括：`gitra-{darwin,linux,windows}-{arm64,amd64}` 六个二进制、
+  macOS 应用包 `Gitra.app.zip`、以及 `checksums.txt`；随后自动创建（或更新）同名的 GitHub Release 并附上说明。
+  （也可以在 GitHub 网页上「Draft a new release」创建同名 tag，工作流会把产物补齐到该 Release。）
+
+版本号会写进二进制：`gitra --version` 显示 tag 名（本地构建显示 `dev`）。
+
+## 首次推送（只有这一次需要指定分支）
+
+新仓库第一次推送必须建立上游关系，之后就不需要了：
+
+```bash
+git push -u origin main      # 一次性；也可以直接用 gitra 的「U 首次上传」
+```
+
 ## 开发
 
 ```bash

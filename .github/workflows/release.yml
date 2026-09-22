@@ -1,0 +1,107 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VERSION_PKG: github.com/zhanhd/gitra/internal/presentation/cli.version
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - run: go test ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [darwin, linux, windows]
+        goarch: [arm64, amd64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+        run: |
+          set -euo pipefail
+          ext=""
+          if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w -X ${VERSION_PKG}=${VERSION}" \
+            -o "dist/gitra-${GOOS}-${GOARCH}${ext}" ./cmd/gitra
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitra-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  macos-app:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build .app bundle
+        env:
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+        run: |
+          ./scripts/build-app.sh
+          ./dist/Gitra.app/Contents/Resources/gitra --version
+          ditto -c -k --keepParent dist/Gitra.app dist/Gitra.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitra-macos-app
+          path: dist/Gitra.app.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, macos-app]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum * > checksums.txt
+          cat checksums.txt
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" artifacts/* --title "$TAG" --generate-notes
+          fi
+          gh release view "$TAG" --json name,assets --jq '{name: .name, assets: [.assets[].name]}'

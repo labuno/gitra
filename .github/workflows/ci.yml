@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l . | grep -v '^$' || true)"
+          if [ -n "$unformatted" ]; then
+            echo "以下文件需要 gofmt："
+            echo "$unformatted"
+            exit 1
+          fi
+      - run: go vet ./...
+      - run: go build ./...
+      - run: go test ./...
+
+  macos-app-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build the macOS app bundle
+        run: ./scripts/build-app.sh
+      - name: Verify the bundle
+        run: |
+          test -x dist/Gitra.app/Contents/MacOS/GitraLauncher
+          test -f dist/Gitra.app/Contents/Info.plist
+          dist/Gitra.app/Contents/Resources/gitra --version

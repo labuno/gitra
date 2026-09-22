@@ -7,8 +7,10 @@ APP="dist/Gitra.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-echo "构建 gitra 二进制 ..."
-go build -o "$APP/Contents/Resources/gitra" ./cmd/gitra
+VERSION="${VERSION:-dev}"
+echo "构建 gitra 二进制 ... (version=${VERSION})"
+go build -trimpath -ldflags "-s -w -X github.com/zhanhd/gitra/internal/presentation/cli.version=${VERSION}" \
+  -o "$APP/Contents/Resources/gitra" ./cmd/gitra
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
