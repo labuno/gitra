@@ -76,6 +76,8 @@ func (a *App) newRootCmd() *cobra.Command {
 		return fmt.Errorf("%w: %v", errUsage, err)
 	})
 	root.AddCommand(newVersionCmd())
+	root.AddCommand(a.newLoginCmd())
+	root.AddCommand(a.newLogoutCmd())
 	root.AddCommand(a.newAccountCmd())
 	root.AddCommand(a.newBindCmd())
 	root.AddCommand(a.newUnbindCmd())

@@ -1,0 +1,554 @@
+{
+  "schema_version": 1,
+  "plan_id": "gitra-v1-login",
+  "source_documents": [
+    {
+      "id": "plan",
+      "path": "docs/plans/gitra-v1-login-plan.md",
+      "sha256": "097e74ed8f8a0f630cbf46e6e123299fe8f8b6776bca34da0cb18e465f2249b3",
+      "role": "primary"
+    },
+    {
+      "id": "baseline",
+      "path": "docs/gitra-v1-implementation-baseline.md",
+      "sha256": "7518af20dc781fb25c8e2458e578852d6b843b6cceb6887805b8cb432713981f",
+      "role": "constraint"
+    },
+    {
+      "id": "design",
+      "path": "docs/gitra-architecture-development-design.md",
+      "sha256": "982b2f057e897572722b30b9255c0544f0be79845cd6ace307ee2c54323f958d",
+      "role": "constraint"
+    },
+    {
+      "id": "addendum",
+      "path": "docs/gitra-v1-login-onboarding-design.md",
+      "sha256": "11ca99027995416d9a7ff4492e19f8ccbe6a4673e9e185775b90e47ece04ddb9",
+      "role": "constraint"
+    }
+  ],
+  "review_dimensions": [
+    {
+      "id": "objective",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-OBJ-01"
+      ],
+      "rationale": "objective 维度提取 1 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "scope",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-SCOPE-01",
+        "REQ-SCOPE-02",
+        "REQ-SCOPE-03",
+        "REQ-SCOPE-04",
+        "REQ-SCOPE-05"
+      ],
+      "rationale": "scope 维度提取 5 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "steps",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STEP-01",
+        "REQ-STEP-02",
+        "REQ-STEP-03",
+        "REQ-STEP-04",
+        "REQ-STEP-05"
+      ],
+      "rationale": "steps 维度提取 5 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "interfaces",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-IF-01",
+        "REQ-IF-02",
+        "REQ-IF-03",
+        "REQ-IF-04",
+        "REQ-IF-05",
+        "REQ-IF-06",
+        "REQ-IF-07"
+      ],
+      "rationale": "interfaces 维度提取 7 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "work_packages",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-WP-01",
+        "REQ-WP-02",
+        "REQ-WP-03",
+        "REQ-WP-04",
+        "REQ-WP-05"
+      ],
+      "rationale": "work_packages 维度提取 5 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "test_matrix",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-TEST-01",
+        "REQ-TEST-02",
+        "REQ-TEST-03",
+        "REQ-TEST-04"
+      ],
+      "rationale": "test_matrix 维度提取 4 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "verification",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-VER-01",
+        "REQ-VER-02"
+      ],
+      "rationale": "verification 维度提取 2 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "done_criteria",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-DONE-01",
+        "REQ-DONE-02"
+      ],
+      "rationale": "done_criteria 维度提取 2 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "stop_conditions",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-STOP-01"
+      ],
+      "rationale": "stop_conditions 维度提取 1 条原子 Requirement 并映射到节点。"
+    },
+    {
+      "id": "external_sources",
+      "disposition": "covered",
+      "requirement_ids": [
+        "REQ-EXT-01",
+        "REQ-EXT-02"
+      ],
+      "rationale": "external_sources 维度提取 2 条原子 Requirement 并映射到节点。"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-OBJ-01",
+      "kind": "objective",
+      "source_document": "plan",
+      "source_section": "## Objective",
+      "source_quote": "让用户无需创建或粘贴 SSH key 即可完成身份接入",
+      "statement": "登录后凭据安全落库，绑定即用。",
+      "verification": "LOGIN-05 E2E",
+      "node_ids": [
+        "LOGIN-01",
+        "LOGIN-04",
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-01",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "复用已登录的 `gh`/`glab`",
+      "statement": "支持复用本机 CLI 凭据。",
+      "verification": "单元测试（fake runner）",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-02",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "新增 `https-token` Auth Strategy",
+      "statement": "新增 HTTPS token 策略与投影。",
+      "verification": "策略单测 + E2E",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-03",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Non-goals",
+      "source_quote": "浏览器一键授权（device flow 的真实实现）与 OAuth App 注册",
+      "statement": "device flow 仅留接口。",
+      "verification": "代码审查（无 client_id 调用）",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-04",
+      "kind": "scope",
+      "source_document": "plan",
+      "source_section": "## Scope",
+      "source_quote": "bind 校验按账号策略分流",
+      "statement": "bind 按策略校验 remote 类型。",
+      "verification": "单测矩阵",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-SCOPE-05",
+      "kind": "scope",
+      "source_document": "addendum",
+      "source_section": "## 5.1 存储：SecretStore（系统原生，不落明文）",
+      "source_quote": "Token 永不写入 gitra 的 JSON 配置、永不进入日志、永不写入 `.git/config`。",
+      "statement": "凭据只进系统凭据库。",
+      "verification": "E2E 扫描配置与仓库文件",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-01",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "SecretStore 端口与 git-credential adapter",
+      "statement": "先完成凭据存取。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-STEP-02",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "Provider 登录与 profile（gh 复用 + PAT + 可注入 HTTP）",
+      "statement": "其次完成登录与资料。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-STEP-03",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "`https-token` Strategy 与 bind 分流",
+      "statement": "再次完成策略与分流。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-STEP-04",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "`login` / `logout` CLI 与账号自动创建",
+      "statement": "然后完成 CLI。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "LOGIN-04"
+      ]
+    },
+    {
+      "id": "REQ-STEP-05",
+      "kind": "steps",
+      "source_document": "plan",
+      "source_section": "## Steps",
+      "source_quote": "端到端回归（登录 → 绑定 HTTPS 仓库 → 凭据可取回 → 解绑/登出清理）",
+      "statement": "最后完成回归。",
+      "verification": "依赖顺序",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-IF-01",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "`ports.SecretStore`：`Get/Set/Delete(ctx, ref string)`",
+      "statement": "SecretStore 端口签名固定。",
+      "verification": "编译期 fake 断言",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-02",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "`internal/adapters/secretstore`",
+      "statement": "adapter 位置与实现方式固定。",
+      "verification": "包路径与测试",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-IF-03",
+      "kind": "interfaces",
+      "source_document": "plan",
+      "source_section": "## Interfaces",
+      "source_quote": "CLI：`gitra login --provider github",
+      "statement": "login/logout 命令形态固定。",
+      "verification": "CLI 测试",
+      "node_ids": [
+        "LOGIN-04"
+      ]
+    },
+    {
+      "id": "REQ-IF-04",
+      "kind": "interfaces",
+      "source_document": "addendum",
+      "source_section": "## 5.2 取回：交给 git 原生 helper，运行时零依赖",
+      "source_quote": "username = lunafoundry",
+      "statement": "repo-local 只投影账号名，token 由 helper 返回。",
+      "verification": "git credential fill 断言",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-05",
+      "kind": "interfaces",
+      "source_document": "baseline",
+      "source_section": "# 9. Managed State Ownership",
+      "source_quote": "credential.<https-url>.username",
+      "statement": "受管白名单扩展为 credential.* URL 作用域键。",
+      "verification": "策略单测断言键集合",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-06",
+      "kind": "interfaces",
+      "source_document": "addendum",
+      "source_section": "## 5.3 repo-local 配置投影（受管 key 清单）",
+      "source_quote": "credential.helper                  # 仅当系统未配置任何 helper 时写入",
+      "statement": "helper 只在需要时写入。",
+      "verification": "helper 解析单测",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-IF-07",
+      "kind": "interfaces",
+      "source_document": "addendum",
+      "source_section": "## 5.4 多账号隔离规则",
+      "source_quote": "多账号（同一 host ≥ 2 个账号）：只在被管理仓库内写 repo-local",
+      "statement": "多账号不写全局选择。",
+      "verification": "E2E/单测",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-WP-01",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### LOGIN-01 SecretStore & Git Credential Adapter",
+      "source_quote": "git credential approve/fill/reject 封装",
+      "statement": "WP LOGIN-01 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-WP-02",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### LOGIN-02 Provider Login & Profile",
+      "source_quote": "gh/glab 复用、PAT 输入（env/stdin）、可注入 HTTP 的 profile 拉取",
+      "statement": "WP LOGIN-02 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-WP-03",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### LOGIN-03 HTTPS Token Strategy & Binding Branch",
+      "source_quote": "`https-token` Auth Strategy；bind/status 按策略校验",
+      "statement": "WP LOGIN-03 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-WP-04",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### LOGIN-04 Login / Logout CLI",
+      "source_quote": "`login`（自动建号或更新、--json）与 `logout`",
+      "statement": "WP LOGIN-04 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "LOGIN-04"
+      ]
+    },
+    {
+      "id": "REQ-WP-05",
+      "kind": "work_packages",
+      "source_document": "plan",
+      "source_section": "### LOGIN-05 Login End-to-End Regression",
+      "source_quote": "全流程与非交互错误路径",
+      "statement": "WP LOGIN-05 完成。",
+      "verification": "节点 Gate",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-TEST-01",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "secretstore 单测（fake runner 断言命令序列）",
+      "statement": "凭据存取可离线测试。",
+      "verification": "go test ./internal/adapters/secretstore/...",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-TEST-02",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "provider profile 单测（httptest 固定响应与错误码分类）",
+      "statement": "provider 可用 httptest 测试。",
+      "verification": "go test ./internal/adapters/provider/...",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-TEST-03",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "strategy 单测（投影键与 helper 决策）",
+      "statement": "策略可离线测试。",
+      "verification": "go test ./internal/strategies/...",
+      "node_ids": [
+        "LOGIN-03"
+      ]
+    },
+    {
+      "id": "REQ-TEST-04",
+      "kind": "test_matrix",
+      "source_document": "plan",
+      "source_section": "## Test Matrix",
+      "source_quote": "CLI E2E（隔离 GITRA_CONFIG_DIR + 临时仓库 + httptest provider）",
+      "statement": "端到端可离线测试。",
+      "verification": "go test ./internal/e2e/...",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-VER-01",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "E2E 断言 token 不出现在任何文本文件与日志中",
+      "statement": "安全断言必须存在。",
+      "verification": "E2E 文件扫描",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-VER-02",
+      "kind": "verification",
+      "source_document": "plan",
+      "source_section": "## Verification",
+      "source_quote": "每节点 `go test ./...` + `go vet ./...`",
+      "statement": "节点 Gate 全绿。",
+      "verification": "执行图证据",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-DONE-01",
+      "kind": "done_criteria",
+      "source_document": "plan",
+      "source_section": "## Done",
+      "source_quote": "用户可用一条 `gitra login`",
+      "statement": "一条命令完成接入。",
+      "verification": "E2E",
+      "node_ids": [
+        "LOGIN-04"
+      ]
+    },
+    {
+      "id": "REQ-DONE-02",
+      "kind": "done_criteria",
+      "source_document": "baseline",
+      "source_section": "# 60. V1 最终 Definition of Done",
+      "source_quote": "新手从零到 push 成功，除浏览器授权外零输入",
+      "statement": "面向新手的零输入目标。",
+      "verification": "E2E",
+      "node_ids": [
+        "LOGIN-05"
+      ]
+    },
+    {
+      "id": "REQ-STOP-01",
+      "kind": "stop_conditions",
+      "source_document": "plan",
+      "source_section": "## STOP Conditions",
+      "source_quote": "需要在测试中写入真实系统凭据库或真实网络",
+      "statement": "测试必须隔离。",
+      "verification": "执行记录",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    },
+    {
+      "id": "REQ-EXT-01",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "gh CLI（可选，`gh auth token`）",
+      "statement": "可选复用 gh。",
+      "verification": "单元测试",
+      "node_ids": [
+        "LOGIN-02"
+      ]
+    },
+    {
+      "id": "REQ-EXT-02",
+      "kind": "external_sources",
+      "source_document": "plan",
+      "source_section": "## External Sources",
+      "source_quote": "系统 git 的 credential helper 机制",
+      "statement": "依赖 git credential 机制。",
+      "verification": "集成测试",
+      "node_ids": [
+        "LOGIN-01"
+      ]
+    }
+  ],
+  "review": {
+    "status": "PASS",
+    "unresolved_requirements": [],
+    "unjustified_nodes": [],
+    "reviewed_at": "2026-09-22T21:30:00+08:00"
+  }
+}

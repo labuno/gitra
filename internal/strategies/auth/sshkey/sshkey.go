@@ -25,6 +25,9 @@ func New() *Strategy { return &Strategy{} }
 // ID implements auth.Strategy.
 func (s *Strategy) ID() string { return ID }
 
+// Transport implements auth.Strategy.
+func (s *Strategy) Transport() domain.RemoteTransport { return domain.RemoteTransportSSH }
+
 // Validate checks the account carries a usable private key path.
 func (s *Strategy) Validate(ctx context.Context, account domain.Account) error {
 	if account.Transport.Strategy != ID {

@@ -1,0 +1,286 @@
+{
+  "schema_version": 5,
+  "plan_id": "gitra-v1-login",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/gitra-v1-login-plan.md",
+  "traceability": "traceability.json",
+  "work_packages": [
+    "LOGIN-01",
+    "LOGIN-02",
+    "LOGIN-03",
+    "LOGIN-04",
+    "LOGIN-05"
+  ],
+  "nodes": [
+    {
+      "id": "LOGIN-01",
+      "title": "SecretStore & Git Credential Adapter",
+      "work_packages": [
+        "LOGIN-01"
+      ],
+      "source_sections": [
+        "### LOGIN-01 SecretStore & Git Credential Adapter",
+        "## Interfaces"
+      ],
+      "todo": "LOGIN-01-secretstore.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:secretstore",
+          "kind": "adapter",
+          "description": "git-credential 凭据存取与 helper 解析"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/adapters/secretstore/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/adapters/secretstore/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        }
+      ]
+    },
+    {
+      "id": "LOGIN-02",
+      "title": "Provider Login & Profile",
+      "work_packages": [
+        "LOGIN-02"
+      ],
+      "source_sections": [
+        "### LOGIN-02 Provider Login & Profile",
+        "## Interfaces"
+      ],
+      "todo": "LOGIN-02-provider-login.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:provider-login",
+          "kind": "adapter",
+          "description": "gh 复用/PAT/profile 拉取"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/adapters/provider/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/adapters/provider/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:38:08+08:00"
+        }
+      ]
+    },
+    {
+      "id": "LOGIN-03",
+      "title": "HTTPS Token Strategy & Binding Branch",
+      "work_packages": [
+        "LOGIN-03"
+      ],
+      "source_sections": [
+        "### LOGIN-03 HTTPS Token Strategy & Binding Branch",
+        "## Interfaces"
+      ],
+      "todo": "LOGIN-03-https-strategy.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "LOGIN-01",
+        "LOGIN-02"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:secretstore",
+        "artifact:provider-login"
+      ],
+      "produces": [
+        {
+          "id": "artifact:https-strategy",
+          "kind": "strategy",
+          "description": "https-token 策略与按策略分流的 bind"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/strategies/...",
+        "go test ./internal/app/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/strategies/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:40:15+08:00"
+        },
+        {
+          "command": "go test ./internal/app/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:40:15+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:40:15+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:40:15+08:00"
+        }
+      ]
+    },
+    {
+      "id": "LOGIN-04",
+      "title": "Login / Logout CLI",
+      "work_packages": [
+        "LOGIN-04"
+      ],
+      "source_sections": [
+        "### LOGIN-04 Login / Logout CLI",
+        "## Interfaces"
+      ],
+      "todo": "LOGIN-04-login-cli.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "LOGIN-03"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:https-strategy",
+        "artifact:provider-login"
+      ],
+      "produces": [
+        {
+          "id": "artifact:login-cli",
+          "kind": "cli",
+          "description": "gitra login / logout"
+        }
+      ],
+      "integration_gates": [
+        "go test ./internal/presentation/...",
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./internal/presentation/...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:44:28+08:00"
+        },
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:44:28+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:44:28+08:00"
+        }
+      ]
+    },
+    {
+      "id": "LOGIN-05",
+      "title": "Login End-to-End Regression",
+      "work_packages": [
+        "LOGIN-05"
+      ],
+      "source_sections": [
+        "### LOGIN-05 Login End-to-End Regression",
+        "## Test Matrix"
+      ],
+      "todo": "LOGIN-05-login-e2e.md",
+      "maturity": "DECOMPOSED",
+      "elaboration_blockers": [],
+      "readiness": "READY",
+      "status": "验证成功",
+      "depends_on": [
+        "LOGIN-04"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:login-cli"
+      ],
+      "produces": [
+        {
+          "id": "artifact:login-e2e",
+          "kind": "e2e",
+          "description": "登录/绑定/凭据/登出全流程回归"
+        }
+      ],
+      "integration_gates": [
+        "go test ./...",
+        "go vet ./..."
+      ],
+      "evidence": [
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:44:28+08:00"
+        },
+        {
+          "command": "go vet ./...",
+          "result": "PASS",
+          "scope": "local",
+          "verified_at": "2026-09-22T18:44:28+08:00"
+        }
+      ]
+    }
+  ]
+}

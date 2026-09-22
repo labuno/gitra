@@ -92,8 +92,11 @@ func (r *Reconciler) reconcileBinding(ctx context.Context, id domain.BindingID) 
 		changed++
 	}
 
-	entries, err := desiredEntries(ctx, r.deps, account, binding.ID, remoteExplicitPort(repo))
+	entries, err := desiredEntries(ctx, r.deps, account, binding.ID, account.Provider.Endpoint.Host, remoteExplicitPort(repo))
 	if err != nil {
+		if errors.Is(err, domain.ErrAuthInvalid) {
+			return ReconcileResult{Health: domain.HealthBroken, Failures: []string{"credential missing (needs login)"}}, nil
+		}
 		return ReconcileResult{}, err
 	}
 	observed, err := strategy.Inspect(ctx, r.deps.Git, repo, entries)

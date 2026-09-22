@@ -43,7 +43,11 @@ func TestAccountValidate(t *testing.T) {
 		{"empty host", func(a *Account) { a.Provider.Endpoint.Host = "" }, true, "provider.endpoint.host"},
 		{"empty git name", func(a *Account) { a.Identity.Name = "" }, true, "identity.name"},
 		{"bad email", func(a *Account) { a.Identity.Email = "nope" }, true, "identity.email"},
-		{"unknown transport strategy", func(a *Account) { a.Transport.Strategy = "https-token" }, true, "transport.strategy"},
+		{"unknown transport strategy", func(a *Account) { a.Transport.Strategy = "oauth" }, true, "transport.strategy"},
+		{"https-token transport ok", func(a *Account) {
+			a.Transport.Strategy = StrategyHTTPSToken
+			a.Transport.Config = map[string]string{}
+		}, false, ""},
 		{"missing private key", func(a *Account) { delete(a.Transport.Config, "private_key") }, true, "transport.config.private_key"},
 		{"negative revision", func(a *Account) { a.Revision = -1 }, true, "revision"},
 	}

@@ -24,6 +24,10 @@ type Deps struct {
 	Routing   *routing.Registry
 	Locker    ports.Locker
 	Clock     ports.Clock
+
+	// Secrets and CredentialHelpers serve the https-token strategy (V1.1).
+	Secrets           ports.SecretStore
+	CredentialHelpers ports.CredentialHelperResolver
 }
 
 // BindingService implements bind / unbind / status.
@@ -56,20 +60,38 @@ type BindingStatus struct {
 	Account    domain.Account
 	Health     domain.BindingHealth
 	Drift      []string
+	// NeedsLogin is true when the account credential is missing (e.g. after
+	// logout) while repository metadata is still present.
+	NeedsLogin bool
 }
 
-// managedKeys is the V1.0 ownership whitelist (baseline §9).
-func managedKeys() []string {
-	return []string{
+// managedKeyNames is the ownership whitelist for one account (baseline §9):
+// identity keys plus the transport-specific entries for its strategy.
+func managedKeyNames(account domain.Account) []string {
+	keys := []string{
 		"user.name",
 		"user.email",
-		"core.sshCommand",
 		"gitra.bindingId",
 		"gitra.accountId",
 		"gitra.strategy",
 		"gitra.version",
 	}
+	switch account.Transport.Strategy {
+	case domain.StrategyHTTPSToken:
+		keys = append(keys,
+			"credential.https://"+account.Provider.Endpoint.Host+".username",
+			"credential.helper",
+		)
+	default:
+		keys = append(keys, "core.sshCommand")
+	}
+	sort.Strings(keys)
+	return keys
 }
+
+// DesiredKeys exposes the managed key names for a strategy (used by Unbind
+// fallbacks and tests).
+func DesiredKeys(account domain.Account) []string { return managedKeyNames(account) }
 
 // Bind runs the fixed binding flow inside the write lock (baseline §6).
 func (s *BindingService) Bind(ctx context.Context, req BindRequest) (domain.RepositoryBinding, error) {
@@ -107,7 +129,11 @@ func (s *BindingService) bindLocked(ctx context.Context, req BindRequest) (domai
 		return domain.RepositoryBinding{}, err
 	}
 
-	remoteExplicitPort, err := validateRemote(account, repo)
+	authStrategy, err := s.deps.Auth.Get(account.Transport.Strategy)
+	if err != nil {
+		return domain.RepositoryBinding{}, err
+	}
+	remoteHost, remoteExplicitPort, err := validateRemote(account, repo, authStrategy.Transport())
 	if err != nil {
 		return domain.RepositoryBinding{}, err
 	}
@@ -134,7 +160,7 @@ func (s *BindingService) bindLocked(ctx context.Context, req BindRequest) (domai
 		return domain.RepositoryBinding{}, err
 	}
 
-	entries, err := s.desiredEntries(ctx, account, bindingID, remoteExplicitPort)
+	entries, err := s.desiredEntries(ctx, account, bindingID, remoteHost, remoteExplicitPort)
 	if err != nil {
 		return domain.RepositoryBinding{}, err
 	}
@@ -146,11 +172,11 @@ func (s *BindingService) bindLocked(ctx context.Context, req BindRequest) (domai
 	snapshot := ports.Snapshot{SchemaVersion: 1, BindingID: bindingID, Previous: previous}
 
 	if err := strategy.Apply(ctx, s.deps.Git, repo, entries); err != nil {
-		s.rollback(ctx, repo, strategy, previous, bindingID, false)
+		s.rollback(ctx, repo, strategy, previous, managedKeyNames(account), bindingID, false)
 		return domain.RepositoryBinding{}, err
 	}
 	if err := s.deps.Snapshots.Save(repo.GitDir, snapshot); err != nil {
-		s.rollback(ctx, repo, strategy, previous, bindingID, false)
+		s.rollback(ctx, repo, strategy, previous, managedKeyNames(account), bindingID, false)
 		return domain.RepositoryBinding{}, err
 	}
 
@@ -162,17 +188,17 @@ func (s *BindingService) bindLocked(ctx context.Context, req BindRequest) (domai
 		Revision:   1,
 	}
 	if err := s.deps.Bindings.Save(ctx, binding); err != nil {
-		s.rollback(ctx, repo, strategy, previous, bindingID, false)
+		s.rollback(ctx, repo, strategy, previous, managedKeyNames(account), bindingID, false)
 		return domain.RepositoryBinding{}, err
 	}
 
 	status, err := strategy.Inspect(ctx, s.deps.Git, repo, entries)
 	if err != nil {
-		s.rollback(ctx, repo, strategy, previous, bindingID, true)
+		s.rollback(ctx, repo, strategy, previous, managedKeyNames(account), bindingID, true)
 		return domain.RepositoryBinding{}, err
 	}
 	if len(status.Drift) > 0 {
-		s.rollback(ctx, repo, strategy, previous, bindingID, true)
+		s.rollback(ctx, repo, strategy, previous, managedKeyNames(account), bindingID, true)
 		return domain.RepositoryBinding{}, fmt.Errorf("%w: verification failed for %v", domain.ErrStateDrift, status.Drift)
 	}
 	return binding, nil
@@ -200,9 +226,17 @@ func (s *BindingService) Unbind(ctx context.Context, req UnbindRequest) error {
 		if !found && !hasSnapshot {
 			return fmt.Errorf("%w: %s", domain.ErrBindingNotFound, repo.RootPath)
 		}
+		var account domain.Account
+		if found {
+			account, err = s.deps.Accounts.Get(ctx, binding.AccountID)
+			if err != nil {
+				return err
+			}
+		}
+		keys := managedKeyNames(account)
 
 		if hasSnapshot {
-			previous := toPreviousEntries(snapshot.Previous, managedKeys())
+			previous := toPreviousEntries(snapshot.Previous, keys)
 			if err := strategy.Restore(ctx, s.deps.Git, repo, previous); err != nil {
 				return err
 			}
@@ -211,7 +245,7 @@ func (s *BindingService) Unbind(ctx context.Context, req UnbindRequest) error {
 			}
 		}
 		// Keys added after the snapshot (or without one) are cleared explicitly.
-		for _, key := range managedKeys() {
+		for _, key := range keys {
 			if _, recorded := snapshot.Previous[key]; hasSnapshot && recorded {
 				continue
 			}
@@ -260,7 +294,15 @@ func (s *BindingService) Status(ctx context.Context, path string) (BindingStatus
 		}
 		status.Account = account
 		explicit := remoteExplicitPort(repo)
-		entries, err := s.desiredEntries(ctx, account, binding.ID, explicit)
+		entries, err := s.desiredEntries(ctx, account, binding.ID, account.Provider.Endpoint.Host, explicit)
+		if errors.Is(err, domain.ErrAuthInvalid) {
+			// Credential missing (for example after logout): keep reporting the
+			// binding and surface needs_login instead of failing the command.
+			status.Bound = true
+			status.NeedsLogin = true
+			status.Health = domain.HealthBroken
+			return status, nil
+		}
 		if err != nil {
 			return BindingStatus{}, err
 		}
@@ -277,11 +319,11 @@ func (s *BindingService) Status(ctx context.Context, path string) (BindingStatus
 	return status, nil
 }
 
-func (s *BindingService) desiredEntries(ctx context.Context, account domain.Account, bindingID domain.BindingID, remoteExplicitPort bool) ([]ports.GitConfigEntry, error) {
-	return desiredEntries(ctx, s.deps, account, bindingID, remoteExplicitPort)
+func (s *BindingService) desiredEntries(ctx context.Context, account domain.Account, bindingID domain.BindingID, remoteHost string, remoteExplicitPort bool) ([]ports.GitConfigEntry, error) {
+	return desiredEntries(ctx, s.deps, account, bindingID, remoteHost, remoteExplicitPort)
 }
 
-func desiredEntries(ctx context.Context, deps Deps, account domain.Account, bindingID domain.BindingID, remoteExplicitPort bool) ([]ports.GitConfigEntry, error) {
+func desiredEntries(ctx context.Context, deps Deps, account domain.Account, bindingID domain.BindingID, remoteHost string, remoteExplicitPort bool) ([]ports.GitConfigEntry, error) {
 	strategy, err := deps.Auth.Get(account.Transport.Strategy)
 	if err != nil {
 		return nil, err
@@ -289,7 +331,20 @@ func desiredEntries(ctx context.Context, deps Deps, account domain.Account, bind
 	if err := strategy.Validate(ctx, account); err != nil {
 		return nil, err
 	}
-	authEntries, err := strategy.BuildGitConfig(auth.BuildRequest{Account: account, RemoteHasExplicitPort: remoteExplicitPort})
+	helper := ""
+	if deps.CredentialHelpers != nil {
+		spec, ok, err := deps.CredentialHelpers.Helper(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			helper = spec
+		}
+	}
+	authEntries, err := strategy.BuildGitConfig(auth.BuildRequest{
+		Account: account, RemoteHost: remoteHost,
+		RemoteHasExplicitPort: remoteExplicitPort, CredentialHelper: helper,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -320,8 +375,8 @@ func (s *BindingService) capturePrevious(ctx context.Context, repo domain.Reposi
 }
 
 // rollback restores the snapshot and removes partial metadata/binding.
-func (s *BindingService) rollback(ctx context.Context, repo domain.Repository, strategy routing.Strategy, previous map[string]ports.ConfigState, bindingID domain.BindingID, centralSaved bool) {
-	_ = strategy.Restore(ctx, s.deps.Git, repo, toPreviousEntries(previous, managedKeys()))
+func (s *BindingService) rollback(ctx context.Context, repo domain.Repository, strategy routing.Strategy, previous map[string]ports.ConfigState, keys []string, bindingID domain.BindingID, centralSaved bool) {
+	_ = strategy.Restore(ctx, s.deps.Git, repo, toPreviousEntries(previous, keys))
 	_ = s.deps.Snapshots.Delete(repo.GitDir)
 	if centralSaved {
 		_ = s.deps.Bindings.Delete(ctx, bindingID)
@@ -362,24 +417,33 @@ func readRepoMetadata(ctx context.Context, deps Deps, repo domain.Repository) (s
 	return bindingID, accountID, true, nil
 }
 
-// validateRemote enforces SSH-only transport and provider/host compatibility
-// (baseline §4.2, §4.7). It returns whether the URL carries its own port.
-func validateRemote(account domain.Account, repo domain.Repository) (bool, error) {
+// validateRemote enforces that the remote transport matches the account auth
+// strategy and that the host matches the account endpoint (baseline §4.2/§4.7,
+// addendum §5.3). It returns the remote host and whether the URL carries a port.
+func validateRemote(account domain.Account, repo domain.Repository, transport domain.RemoteTransport) (string, bool, error) {
 	remote, ok := repo.RemoteByName("origin")
 	if !ok {
 		if len(repo.Remotes) == 0 {
-			return false, nil
+			return account.Provider.Endpoint.Host, false, nil
 		}
 		remote = repo.Remotes[0]
 	}
-	parsed, err := domain.ParseRemoteURL(remote.URL)
+	var (
+		parsed domain.RemoteURL
+		err    error
+	)
+	if transport == domain.RemoteTransportHTTPS {
+		parsed, err = domain.ParseHTTPSRemoteURL(remote.URL)
+	} else {
+		parsed, err = domain.ParseRemoteURL(remote.URL)
+	}
 	if err != nil {
-		return false, fmt.Errorf("%w (%s): %v", domain.ErrUnsupportedRemote, remote.Name, err)
+		return "", false, fmt.Errorf("%w (%s): %v", domain.ErrUnsupportedRemote, remote.Name, err)
 	}
 	if !equalFoldHost(parsed.Host, account.Provider.Endpoint.Host) {
-		return false, fmt.Errorf("%w: remote host %q does not match account endpoint %q", domain.ErrProviderMismatch, parsed.Host, account.Provider.Endpoint.Host)
+		return "", false, fmt.Errorf("%w: remote host %q does not match account endpoint %q", domain.ErrProviderMismatch, parsed.Host, account.Provider.Endpoint.Host)
 	}
-	return parsed.ExplicitPort, nil
+	return parsed.Host, parsed.ExplicitPort, nil
 }
 
 func remoteExplicitPort(repo domain.Repository) bool {

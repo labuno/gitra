@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+// RemoteTransport classifies how git talks to a remote.
+type RemoteTransport string
+
+const (
+	RemoteTransportSSH   RemoteTransport = "ssh"
+	RemoteTransportHTTPS RemoteTransport = "https"
+)
+
 // RemoteURL is the parsed form of an SSH remote URL. ExplicitPort reports
 // whether the URL itself carried a port, which drives the baseline §14 rule
 // for generating core.sshCommand.
@@ -48,4 +56,30 @@ func ParseRemoteURL(raw string) (RemoteURL, error) {
 		return RemoteURL{Host: raw[at+1 : colon], Port: 22, Path: raw[colon+1:]}, nil
 	}
 	return RemoteURL{}, fmt.Errorf("%w: %s", ErrUnsupportedRemote, raw)
+}
+
+// ParseHTTPSRemoteURL accepts https://host/owner/repo.git remotes, the V1.1
+// main path. Other transports are rejected with ErrUnsupportedRemote.
+func ParseHTTPSRemoteURL(raw string) (RemoteURL, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return RemoteURL{}, fmt.Errorf("%w: empty remote url", ErrUnsupportedRemote)
+	}
+	if !strings.HasPrefix(raw, "https://") {
+		return RemoteURL{}, fmt.Errorf("%w: %s", ErrUnsupportedRemote, raw)
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Hostname() == "" {
+		return RemoteURL{}, fmt.Errorf("%w: %s", ErrUnsupportedRemote, raw)
+	}
+	result := RemoteURL{Host: parsed.Hostname(), Port: 443, Path: strings.TrimPrefix(parsed.Path, "/")}
+	if port := parsed.Port(); port != "" {
+		number, convErr := strconv.Atoi(port)
+		if convErr != nil || number < 1 || number > 65535 {
+			return RemoteURL{}, fmt.Errorf("%w: bad port in %s", ErrUnsupportedRemote, raw)
+		}
+		result.Port = number
+		result.ExplicitPort = true
+	}
+	return result, nil
 }

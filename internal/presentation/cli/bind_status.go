@@ -141,7 +141,10 @@ func (a *App) newStatusCmd() *cobra.Command {
 						},
 					}
 					state := "invalid"
-					if status.Health == domain.HealthOK || status.Health == domain.HealthDrift {
+					switch {
+					case status.NeedsLogin:
+						state = "needs_login"
+					case status.Health == domain.HealthOK || status.Health == domain.HealthDrift:
 						state = a.authState(ctx, status.Account)
 					}
 					payload.Auth = &authJSON{Strategy: status.Account.Transport.Strategy, State: state}

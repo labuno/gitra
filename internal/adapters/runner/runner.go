@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/zhanhd/gitra/internal/ports"
 )
@@ -21,9 +22,17 @@ type Runner struct{}
 func New() *Runner { return &Runner{} }
 
 // Run implements ports.CommandRunner.
-func (Runner) Run(ctx context.Context, name string, args ...string) (ports.ProcessResult, error) {
+func (r Runner) Run(ctx context.Context, name string, args ...string) (ports.ProcessResult, error) {
+	return r.RunWithInput(ctx, name, "", args...)
+}
+
+// RunWithInput implements ports.CommandRunner with stdin support.
+func (Runner) RunWithInput(ctx context.Context, name string, input string, args ...string) (ports.ProcessResult, error) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, name, args...)
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 

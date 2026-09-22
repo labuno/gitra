@@ -13,6 +13,8 @@ type fakeStrategy struct{ id string }
 
 func (f fakeStrategy) ID() string { return f.id }
 
+func (f fakeStrategy) Transport() domain.RemoteTransport { return domain.RemoteTransportSSH }
+
 func (f fakeStrategy) Validate(context.Context, domain.Account) error { return nil }
 
 func (f fakeStrategy) BuildGitConfig(BuildRequest) ([]ports.GitConfigEntry, error) { return nil, nil }

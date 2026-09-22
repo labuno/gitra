@@ -11,8 +11,11 @@ const (
 	ProviderGitea  ProviderType = "gitea"
 )
 
-// Auth strategy identifiers (baseline §15: ssh-key only in V1).
-const StrategySSHKey = "ssh-key"
+// Auth strategy identifiers (baseline §15: ssh-key; V1.1 adds https-token).
+const (
+	StrategySSHKey     = "ssh-key"
+	StrategyHTTPSToken = "https-token"
+)
 
 // ProviderEndpoint models the SSH endpoint explicitly (baseline §4.3):
 // self-hosted instances may use custom hosts and non-22 ports.

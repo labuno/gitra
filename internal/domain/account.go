@@ -48,8 +48,12 @@ func (t TransportConfig) Validate() error {
 			return invalid("transport.config.private_key", "must not be empty")
 		}
 		return nil
+	case StrategyHTTPSToken:
+		// The token itself lives in the system credential store; nothing to
+		// validate in the account document.
+		return nil
 	default:
-		return invalid("transport.strategy", "must be ssh-key in V1")
+		return invalid("transport.strategy", "must be ssh-key or https-token")
 	}
 }
 
@@ -61,6 +65,12 @@ type Account struct {
 	Identity  CommitIdentity
 	Transport TransportConfig
 	Revision  int
+}
+
+// CredentialRef is the stable secret-store reference for https-token
+// accounts: "<host>/<username>".
+func (a Account) CredentialRef() string {
+	return a.Provider.Endpoint.Host + "/" + a.Provider.Username
 }
 
 // Validate enforces the account invariants in a deterministic order:

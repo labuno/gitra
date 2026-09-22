@@ -43,6 +43,10 @@ func (fakeRunner) Run(context.Context, string, ...string) (ProcessResult, error)
 	return ProcessResult{}, nil
 }
 
+func (fakeRunner) RunWithInput(context.Context, string, string, ...string) (ProcessResult, error) {
+	return ProcessResult{}, nil
+}
+
 type fakeAccountStore struct{}
 
 func (fakeAccountStore) Save(context.Context, domain.Account) error { return nil }

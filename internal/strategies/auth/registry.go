@@ -17,14 +17,22 @@ var ErrUnknownStrategy = errors.New("unknown strategy")
 // BuildRequest carries everything needed to build repo-local auth config.
 type BuildRequest struct {
 	Account domain.Account
+	// RemoteHost is the host of the selected remote (validated against the
+	// account endpoint before building).
+	RemoteHost string
 	// RemoteHasExplicitPort is true when the selected remote URL carries its
 	// own port; baseline §14 then forbids appending -p to core.sshCommand.
 	RemoteHasExplicitPort bool
+	// CredentialHelper is a repo-local helper spec to write when the user has
+	// no global helper (addendum §5.3); empty means "write nothing".
+	CredentialHelper string
 }
 
 // Strategy turns an account into git config entries for transport auth.
 type Strategy interface {
 	ID() string
+	// Transport reports which remote transports this strategy can bind.
+	Transport() domain.RemoteTransport
 	Validate(ctx context.Context, account domain.Account) error
 	BuildGitConfig(req BuildRequest) ([]ports.GitConfigEntry, error)
 }
