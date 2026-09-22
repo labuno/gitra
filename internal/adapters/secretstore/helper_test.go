@@ -68,3 +68,14 @@ func TestResolveHelperUsesPlatformHelperWhenAvailable(t *testing.T) {
 		t.Fatalf("helper = %q, want osxkeychain", helper)
 	}
 }
+
+func TestResolveHelperHonoursOverride(t *testing.T) {
+	t.Setenv("GITRA_CREDENTIAL_HELPER", "store --file=/tmp/isolated")
+	helper, err := ResolveHelper(context.Background(), &scriptedRunner{}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if helper != "store --file=/tmp/isolated" {
+		t.Fatalf("helper = %q, want the override", helper)
+	}
+}

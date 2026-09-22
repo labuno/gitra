@@ -106,6 +106,59 @@ func (a *Adapter) GetLocalConfig(ctx context.Context, repo domain.Repository, ke
 	return strings.TrimRight(res.Stdout, "\n"), true, nil
 }
 
+// PublishStatus reports the current branch, whether it has commits and whether
+// the remote already carries that branch.
+func (a *Adapter) PublishStatus(ctx context.Context, repo domain.Repository) (ports.PublishStatus, error) {
+	var status ports.PublishStatus
+
+	branchRes, err := a.run(ctx, repo.RootPath, "symbolic-ref", "--short", "HEAD")
+	if err != nil {
+		return status, err
+	}
+	if branchRes.ExitCode != 0 {
+		return status, fmt.Errorf("%w: 当前不在任何分支上（可能是 detached HEAD）", domain.ErrInvalid)
+	}
+	status.Branch = strings.TrimSpace(branchRes.Stdout)
+
+	headRes, err := a.run(ctx, repo.RootPath, "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return status, err
+	}
+	status.HasLocalCommits = headRes.ExitCode == 0
+
+	if _, hasOrigin := repo.RemoteByName("origin"); !hasOrigin {
+		return status, nil // nothing to compare against yet
+	}
+	remoteRes, err := a.run(ctx, repo.RootPath, "ls-remote", "--heads", "origin", "refs/heads/"+status.Branch)
+	if err != nil {
+		return status, err
+	}
+	if remoteRes.ExitCode != 0 {
+		return status, fmt.Errorf("无法访问远端：%s", firstLine(remoteRes.Stderr))
+	}
+	status.RemoteHasBranch = strings.TrimSpace(remoteRes.Stdout) != ""
+	return status, nil
+}
+
+// Push performs the first push of branch to remote (optionally setting the
+// upstream). Subsequent git usage happens in the user's own tools.
+func (a *Adapter) Push(ctx context.Context, repo domain.Repository, remote, branch string, setUpstream bool) error {
+	args := []string{"push"}
+	if setUpstream {
+		args = append(args, "--set-upstream")
+	}
+	args = append(args, remote, branch)
+
+	res, err := a.run(ctx, repo.RootPath, args...)
+	if err != nil {
+		return err
+	}
+	if res.ExitCode != 0 {
+		return fmt.Errorf("git push 失败：%s", firstLine(res.Stderr))
+	}
+	return nil
+}
+
 // GetGlobalConfig reads one key from the user's global git config.
 func (a *Adapter) GetGlobalConfig(ctx context.Context, key string) (string, bool, error) {
 	res, err := a.runner.Run(ctx, "git", "config", "--global", "--get", key)

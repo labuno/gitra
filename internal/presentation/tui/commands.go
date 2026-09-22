@@ -276,7 +276,22 @@ func (m *Model) createAndBindCommand(account domain.Account, path string) tea.Cm
 		if _, err := remote.CreateAndBind(context.Background(), account.ID, path, true); err != nil {
 			return bindDoneMsg{path: path, alias: account.Alias, err: err}
 		}
-		return bindDoneMsg{path: path, alias: account.Alias}
+		return bindDoneMsg{path: path, alias: account.Alias, createdRemote: true}
+	}
+}
+
+// publishCommand performs the one-time first upload (baseline §7 exception).
+func (m *Model) publishCommand(path string) tea.Cmd {
+	publish := m.app.Publish
+	return func() tea.Msg {
+		if publish == nil {
+			return publishDoneMsg{path: path, err: fmt.Errorf("上传功能不可用")}
+		}
+		result, err := publish.FirstPublish(context.Background(), path)
+		if err != nil {
+			return publishDoneMsg{path: path, err: err}
+		}
+		return publishDoneMsg{path: path, branch: result.Branch}
 	}
 }
 

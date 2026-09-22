@@ -31,6 +31,8 @@ type Deps struct {
 	CredentialHelpers ports.CredentialHelperResolver
 	// SSH serves explicit account verification for ssh-key accounts.
 	SSH ports.SSH
+	// Publisher performs the one-time first upload (see PublishService).
+	Publisher ports.Publisher
 }
 
 // BindingService implements bind / unbind / status.

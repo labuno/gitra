@@ -26,7 +26,17 @@ type loginDoneMsg struct {
 type bindDoneMsg struct {
 	path  string
 	alias string
-	err   error
+	// createdRemote is set when gitra created the provider-side repository in
+	// this step, which makes an immediate first upload the natural next action.
+	createdRemote bool
+	err           error
+}
+
+// publishDoneMsg reports the outcome of the one-time first upload.
+type publishDoneMsg struct {
+	path   string
+	branch string
+	err    error
 }
 
 type unbindDoneMsg struct {

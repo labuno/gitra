@@ -123,6 +123,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.detailAccount == nil {
 			m.screen = screenAccounts
 		}
+		if msg.createdRemote {
+			path := msg.path
+			m.confirmPrompt = "远端仓库已创建并绑定。\n\n要现在把本地代码首次上传吗？\n（只需这一次，之后在编辑器里同步即可）"
+			m.confirmAction = func() tea.Cmd { return m.publishCommand(path) }
+			m.screen = screenConfirm
+		}
+		return m, nil
+
+	case publishDoneMsg:
+		m.busy = false
+		if msg.err != nil {
+			m.errText = plainError(msg.err)
+			return m, nil
+		}
+		m.message = "已上传：" + msg.branch + " → origin（已在远端确认）"
+		m.errText = ""
+		if m.detailAccount != nil {
+			m.loadDetailProjects(*m.detailAccount)
+		}
 		return m, nil
 
 	case unbindDoneMsg:
@@ -338,6 +357,14 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.confirmAction = func() tea.Cmd { return m.unbindCommand(project.Path) }
 			m.screen = screenConfirm
 		}
+	case "u":
+		if len(m.detailProjects) > 0 && m.detailSelected < len(m.detailProjects) {
+			path := m.detailProjects[m.detailSelected].Path
+			m.busy = true
+			m.message = "正在上传（首次）…"
+			return m, m.publishCommand(path)
+		}
+		m.errText = "先选择一个项目，再按 U 上传。"
 	case "t":
 		if account != nil {
 			m.message = "正在检查 " + account.Alias + " …"

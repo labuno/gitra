@@ -71,7 +71,7 @@ func (m Model) helpSegments() []string {
 		}
 		return []string{"↑↓←→ 选择", "Enter 打开", "A 添加账号", "B 绑定项目", "T 测试连接", "Q 退出"}
 	case screenDetail:
-		return []string{"↑↓ 选择项目", "B 绑定文件夹", "D 解除绑定", "T 测试连接", "R 修复配置", "X 删除账号", "Esc 返回"}
+		return []string{"↑↓ 选择项目", "B 绑定文件夹", "U 首次上传", "D 解除绑定", "T 测试连接", "R 修复配置", "X 删除账号", "Esc 返回"}
 	case screenLogin:
 		return []string{"↑↓ 选择", "Enter 确认", "Esc 返回"}
 	case screenBind:

@@ -34,6 +34,7 @@ type App struct {
 	Verification *app.VerificationService
 	Detector     *app.Detector
 	Remote       *app.RemoteService
+	Publish      *app.PublishService
 }
 
 // NewFromDeps builds every service around explicit dependencies. It is used by
@@ -58,6 +59,7 @@ func NewFromDeps(deps app.Deps, tokens ports.TokenProvider, profiles ports.Profi
 		Verification: app.NewVerificationService(deps, profiles, parser),
 		Detector:     app.NewDetector(deps, tokens, parser),
 		Remote:       app.NewRemoteService(deps, repoService, bindings),
+		Publish:      app.NewPublishService(deps),
 	}
 }
 
@@ -90,6 +92,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 
+	gitProvider := gitcli.New(gitRunner)
 	deps := app.Deps{
 		Accounts:  storage.NewAccountStore(configDir),
 		Bindings:  storage.NewBindingStore(configDir),
@@ -103,6 +106,7 @@ func New() (*App, error) {
 		Secrets:           secrets,
 		CredentialHelpers: secretstore.NewHelperResolver(gitRunner, configDir),
 		SSH:               sshcli.New(gitRunner),
+		Publisher:         gitProvider,
 	}
 
 	loginAdapter := router.New(gitRunner, os.Stdin)

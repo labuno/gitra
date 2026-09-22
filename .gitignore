@@ -2,3 +2,11 @@
 /dist/
 *.test
 .DS_Store
+
+# 本地产物与个人文件
+/video/
+*.mp4
+/log.png
+
+# 图标草稿（待定稿后再决定是否入库）
+/assets/icon/

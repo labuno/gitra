@@ -30,7 +30,10 @@ func newTestModel(t *testing.T) (Model, *bootstrap.App) {
 		return opened[len(opened)-1]
 	}
 	withFakeLookPath(t, map[string]string{})
-	t.Setenv("GITRA_CONFIG_DIR", t.TempDir())
+	configDir := t.TempDir()
+	// Never touch the real system keychain from tests.
+	t.Setenv("GITRA_CREDENTIAL_HELPER", "store --file="+filepath.Join(configDir, "credentials"))
+	t.Setenv("GITRA_CONFIG_DIR", configDir)
 	application, err := bootstrap.New()
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +61,17 @@ func addSSHAccount(t *testing.T, application *bootstrap.App, alias string) {
 	if err != nil {
 		t.Fatalf("create account: %v", err)
 	}
+}
+
+func gitRunT(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v in %s: %v\n%s", args, dir, err, out)
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func newRepoDir(t *testing.T) string {
@@ -868,4 +882,87 @@ func mustAccount(t *testing.T, application *bootstrap.App, alias string) domain.
 		t.Fatal(err)
 	}
 	return account
+}
+
+// addHTTPSAccount registers an account that uses a stored credential, so HTTPS
+// remotes can be bound (the ssh-key path is covered by addSSHAccount).
+func addHTTPSAccount(t *testing.T, application *bootstrap.App, alias string) domain.Account {
+	t.Helper()
+	ctx := context.Background()
+	ref := "github.com/" + alias
+	if err := application.Deps.Secrets.Set(ctx, ref, "test-token"); err != nil {
+		t.Fatalf("store credential: %v", err)
+	}
+	account, err := application.Accounts.Create(ctx, app.CreateAccountRequest{
+		Alias: alias,
+		Provider: domain.ProviderRef{
+			Type: domain.ProviderGitHub, Username: alias,
+			Endpoint: domain.ProviderEndpoint{Host: "github.com", SSHUser: "git", SSHPort: 22},
+		},
+		Identity:  domain.CommitIdentity{Name: alias, Email: alias + "@example.com"},
+		Transport: domain.TransportConfig{Strategy: domain.StrategyHTTPSToken, Config: map[string]string{}},
+	})
+	if err != nil {
+		t.Fatalf("create https account: %v", err)
+	}
+	return account
+}
+
+// makeRepoReadyToPublish creates a repository with one commit and a local bare
+// remote, so the publish flow can be exercised offline.
+func makeRepoReadyToPublish(t *testing.T) (repo string, bare string) {
+	t.Helper()
+	base := t.TempDir()
+	bare = filepath.Join(base, "remote.git")
+	if err := os.MkdirAll(bare, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitRunT(t, filepath.Dir(bare), "init", "-q", "--bare", bare)
+
+	repo = filepath.Join(base, "site")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitRunT(t, repo, "init", "-q", "-b", "main")
+	gitRunT(t, repo, "config", "user.name", "Luna")
+	gitRunT(t, repo, "config", "user.email", "luna@example.com")
+	gitRunT(t, repo, "remote", "add", "origin", "https://github.com/lunafoundry/site.git")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRunT(t, repo, "add", ".")
+	gitRunT(t, repo, "commit", "-q", "-m", "initial")
+	return repo, bare
+}
+
+func TestPublishKeyUploadsFirstTime(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	repo, bare := makeRepoReadyToPublish(t)
+	ctx := context.Background()
+	if _, err := application.Bindings.Bind(ctx, app.BindRequest{AccountID: account.ID, Path: repo}); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	// Binding validated the real remote; point origin at the local bare repo so
+	// the publish test stays offline.
+	gitRunT(t, repo, "remote", "set-url", "origin", bare)
+
+	model.loadAccounts()
+	model.openDetail()
+	model, cmd := press(t, model, "u")
+	if !model.busy || cmd == nil {
+		t.Fatalf("U must start the first upload: busy=%v", model.busy)
+	}
+	model = runCmd(t, model, cmd)
+	if !strings.Contains(model.message, "已上传") {
+		t.Fatalf("message = %q, err = %q", model.message, model.errText)
+	}
+	if out := gitRunT(t, bare, "branch", "--list"); !strings.Contains(out, "main") {
+		t.Fatalf("remote branches = %q, want main", out)
+	}
+	if !strings.Contains(model.helpLine(), "U 首次上传") && !strings.Contains(model.renderHelp(), "U 首次上传") {
+		t.Fatalf("help must mention the upload key: %q", model.renderHelp())
+	}
 }

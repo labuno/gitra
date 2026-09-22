@@ -15,6 +15,12 @@ import (
 //  2. the platform helper shipped with git (macOS osxkeychain), else
 //  3. a gitra-managed file store under the config directory (0600).
 func ResolveHelper(ctx context.Context, runner ports.CommandRunner, configDir string) (string, error) {
+	// Explicit override (tests, portable installs, power users): use it as-is so
+	// no test ever touches the real system keychain.
+	if override := strings.TrimSpace(os.Getenv("GITRA_CREDENTIAL_HELPER")); override != "" {
+		return override, nil
+	}
+
 	configured, err := runner.Run(ctx, "git", "config", "--get-all", "credential.helper")
 	if err != nil {
 		return "", err

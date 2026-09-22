@@ -110,6 +110,7 @@ func (a *App) newRootCmd() *cobra.Command {
 	root.AddCommand(a.newBindCmd())
 	root.AddCommand(a.newUnbindCmd())
 	root.AddCommand(a.newStatusCmd())
+	root.AddCommand(a.newPublishCmd())
 	return root
 }
 
