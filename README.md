@@ -49,18 +49,24 @@ gitra 把"哪个文件夹用哪个账号"变成一次性的绑定：绑定之后
 
 ## 开始使用
 
-### macOS（不需要命令行）
+### macOS（双击即用，不需要命令行）
 
-1. 构建应用包：`./scripts/build-app.sh` → 得到 `dist/Gitra.app`（可拖进「应用程序」）
-   —— 或直接双击仓库里的 `Gitra.command`（首次会自动构建）。
-2. 打开后看到欢迎菜单 → **登录 GitHub**：
+1. 打开本仓库的 **Releases** 页面，下载最新版里的 `Gitra-macOS.zip`；
+2. 双击解压 → 双击解压出来的 `Gitra.app`：会弹出一个「终端」窗口，里面就是 gitra 界面；
+3. 首次打开若被 macOS 拦截（“无法验证开发者”/“无法检查是否包含恶意软件”）：
+   打开「系统设置 → 隐私与安全性」，在“安全性”一节点「仍要打开」，再双击一次即可——
+   这一步只需做一次（解压出来的文件夹里也放着同样的说明）。
+4. 打开后看到欢迎菜单 → **登录 GitHub**：
    - 本机登录过官方 `gh` 时可直接授权（浏览器点一次 Authorize）；
    - 否则选「粘贴访问码」，我们会自动打开平台页面并勾好所需权限。
-3. 登录后界面会问「要现在添加项目吗？」→ 选择你的项目文件夹
+5. 登录后界面会问「要现在添加项目吗？」→ 选择你的项目文件夹
    → 若远端仓库还不存在，会问「要现在创建吗？」→ 创建并绑定
    → 首次上传按 `U`（仅此一次；之后在编辑器里同步即可）。
 
 界面操作全靠键盘：`↑↓←→` 移动 · `Enter` 确认 · `Esc` 返回 · `A` 添加账号 · `B` 绑定项目 · `T` 测试连接 · `U` 首次上传 · `Q` 退出（会先确认）。
+
+> 想跑源码版本：`./scripts/build-app.sh` 生成 `dist/Gitra.app`；
+> 或直接双击仓库根目录的 `Gitra.command`（首次会自动构建，需要本机有 Go）。
 
 ### 命令行（给脚本与自动化）
 
@@ -107,8 +113,9 @@ gitra unbind [path]                    # 还原绑定前状态
   git push origin v0.1.0  # 触发 Release workflow
   ```
 
-  产物包括：`gitra-{darwin,linux,windows}-{arm64,amd64}` 六个二进制、
-  macOS 应用包 `Gitra.app.zip`、以及 `checksums.txt`；随后自动创建（或更新）同名的 GitHub Release 并附上说明。
+  产物包括：六个平台的 `gitra-{darwin,linux,windows}-{arm64,amd64}.zip`、
+  macOS 应用包 `Gitra-macOS.zip`（内含首次使用说明）、以及 `checksums.txt`；
+  随后自动创建（或更新）同名的 GitHub Release 并附上下载说明。
   （也可以在 GitHub 网页上「Draft a new release」创建同名 tag，工作流会把产物补齐到该 Release。）
 
 版本号会写进二进制：`gitra --version` 显示 tag 名（本地构建显示 `dev`）。

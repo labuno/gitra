@@ -39,16 +39,17 @@ jobs:
             exit 0
           fi
           cat > release-notes.md <<'NOTES'
-          ## 该下载哪个文件？
+          ## 下载哪一个？
 
-          **macOS 用户（推荐）**：下载 `Gitra.app.zip` → 解压 → 双击 `Gitra.app`
-          （首次打开若提示“身份不明的开发者”，右键 → 打开即可）
+          **macOS**：下载 `Gitra-macOS.zip` → 双击解压 → 双击解压出来的 `Gitra.app`。
+          文件夹里的 `第一次使用请看这里.txt` 写好了首次打开被系统拦截时怎么办。
 
-          **命令行 / Linux / Windows**：下载对应平台的 `gitra-<系统>-<架构>`。
-          建议选 `.zip` 版本：解压后自带可执行权限；直接下载裸二进制会丢失该权限，
-          需要自己 `chmod +x`（macOS / Linux）后才能运行。
+          **Linux / Windows / 想用命令行**：下载对应平台的 `gitra-<系统>-<架构>.zip`，
+          解压后即可运行。
 
-          **校验完整性**：`checksums.txt` 是每个文件的 sha256。
+          发布里只提供 zip：浏览器直接下载裸二进制会丢掉可执行权限（双击会被当文本打开）。
+
+          **校验完整性**：`checksums.txt` 是所有文件的 sha256。
           NOTES
           sed -i 's/^          //' release-notes.md
           gh release create "$TAG" --title "$TAG" --notes-file release-notes.md
@@ -67,7 +68,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build and attach the binary
+      - name: Build and attach the platform zip
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -83,9 +84,9 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X ${VERSION_PKG}=${VERSION}" \
             -o "dist/gitra-${GOOS}-${GOARCH}${ext}" ./cmd/gitra
-          # A zip keeps the executable bit, which browsers strip on raw downloads.
+          # zip 保住可执行权限：浏览器下载裸文件会丢掉它。
           (cd dist && zip -q "gitra-${GOOS}-${GOARCH}${ext}.zip" "gitra-${GOOS}-${GOARCH}${ext}")
-          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}" "dist/gitra-${GOOS}-${GOARCH}${ext}.zip" --clobber
+          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}.zip" --clobber
 
   macos-app:
     needs: prepare
@@ -96,7 +97,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build and attach the macOS app bundle
+      - name: Build and attach the macOS app zip
         env:
           VERSION: ${{ github.ref_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,8 +107,33 @@ jobs:
           set -euo pipefail
           ./scripts/build-app.sh
           ./dist/Gitra.app/Contents/Resources/gitra --version
-          ditto -c -k --keepParent dist/Gitra.app dist/Gitra.app.zip
-          gh release upload "$TAG" dist/Gitra.app.zip --clobber
+          lipo -info dist/Gitra.app/Contents/Resources/gitra
+          codesign --verify --deep --strict dist/Gitra.app
+
+          mkdir -p dist/Gitra-macOS
+          ditto dist/Gitra.app "dist/Gitra-macOS/Gitra.app"
+          cat > "dist/Gitra-macOS/第一次使用请看这里.txt" <<'TXT'
+          gitra —— 让每个文件夹用对账号
+
+          怎么打开（两步）：
+
+          1. 双击 Gitra.app。
+          2. 如果 macOS 提示“无法验证开发者 / 无法检查是否包含恶意软件”，
+             就打开「系统设置 → 隐私与安全性」，在“安全性”区域点「仍要打开」，
+             然后回到这里再双击一次 Gitra.app。这个提示只需要处理一次。
+
+          打开后会弹出一个“终端”窗口，里面就是 gitra 界面，全程用键盘操作：
+          ↑↓←→ 选择 · Enter 确认 · Esc 返回 · Q 退出（界面底部也写着快捷键）。
+
+          第一次使用：选「登录 GitHub」→ 在浏览器里点一次授权 →
+          再把你的项目文件夹绑定给这个账号（可以一次选多个文件夹）。
+
+          为什么会被拦截：gitra 是开源软件，没有购买 Apple 的付费签名证书，
+          macOS 会对“从网上下载的非 App Store 应用”做例行提醒，它不是病毒告警。
+          TXT
+          sed -i '' 's/^          //' "dist/Gitra-macOS/第一次使用请看这里.txt" || true
+          ditto -c -k --keepParent dist/Gitra-macOS dist/Gitra-macOS.zip
+          gh release upload "$TAG" dist/Gitra-macOS.zip --clobber
 
   checksums:
     needs: [build, macos-app]
