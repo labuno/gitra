@@ -16,6 +16,7 @@ const (
 	screenAccounts screen = iota
 	screenDetail
 	screenLogin
+	screenKeyPick
 	screenBind
 	screenRemote
 	screenConfirm
@@ -64,12 +65,22 @@ type Model struct {
 
 	login loginState
 	bind  bindState
+
+	// SSH key picker (loading a passphrase-protected key into ssh-agent).
+	keys     []app.SSHKeyInfo
+	keyIndex int
 	// confirm dialog
 	confirmPrompt  string
 	confirmAction  func() tea.Cmd
 	confirmConfirm func() tea.Cmd
 
 	quit bool
+}
+
+// keyPickState is the identity the chosen SSH key will be used for.
+type keyPickState struct {
+	provider domain.ProviderType
+	host     string
 }
 
 type loginState struct {
@@ -84,6 +95,7 @@ type loginState struct {
 	// authorized CLI session is then used without further questions.
 	autoPickCLI bool
 	candidates  []app.Candidate
+	keyPick     keyPickState
 }
 
 // bindOptionKind distinguishes what a picker row does.
@@ -109,6 +121,7 @@ type loginOptionKind string
 const (
 	loginOptionCandidate loginOptionKind = "candidate"
 	loginOptionBrowser   loginOptionKind = "browser"
+	loginOptionSSHKey    loginOptionKind = "ssh-key"
 	loginOptionManual    loginOptionKind = "manual"
 )
 

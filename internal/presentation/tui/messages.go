@@ -87,3 +87,16 @@ type bindManyDoneMsg struct {
 	results []app.BatchItemResult
 	err     error
 }
+
+// keyLoadedMsg reports the result of loading a key into ssh-agent.
+type keyLoadedMsg struct {
+	path string
+	err  error
+}
+
+// keyVerifiedMsg reports whether the provider accepted a key.
+type keyVerifiedMsg struct {
+	path      string
+	candidate app.Candidate
+	ok        bool
+}

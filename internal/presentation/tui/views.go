@@ -75,6 +75,8 @@ func (m Model) helpSegments() []string {
 		return []string{"↑↓ 选择项目", "B 绑定文件夹", "U 首次上传", "D 解除绑定", "T 测试连接", "R 修复配置", "X 删除账号", "Esc 返回"}
 	case screenLogin:
 		return []string{"↑↓ 选择", "Enter 确认", "Esc 返回"}
+	case screenKeyPick:
+		return []string{"↑↓ 选择密钥", "Enter 使用", "Esc 返回"}
 	case screenBind:
 		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "E 粘贴路径", "Esc 返回"}
 	case screenRemote:
@@ -158,6 +160,8 @@ func (m Model) View() string {
 		builder.WriteString(m.viewDetail())
 	case screenLogin:
 		builder.WriteString(m.viewLogin())
+	case screenKeyPick:
+		builder.WriteString(m.viewKeyPick())
 	case screenBind:
 		builder.WriteString(m.viewBind())
 	case screenRemote:
@@ -420,6 +424,33 @@ func (m Model) loginHint() string {
 	return "这台电脑上没有可直接复用的登录，也没有找到官方客户端。\n" +
 		"「粘贴访问码」= 在平台上创建一个令牌（我们会打开页面并勾好权限）；\n" +
 		"它存在系统钥匙串里，之后 pull / push / 合并都由 git 自动使用，不需要再输入。"
+}
+
+func (m Model) viewKeyPick() string {
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("使用本地 SSH 密钥登录 %s\n\n",
+		providerLabel(m.login.keyPick.provider)))
+	if len(m.keys) == 0 {
+		builder.WriteString(subtitleStyle.Render("没有在 ~/.ssh 下找到可用的私钥。") + "\n")
+		return builder.String()
+	}
+	builder.WriteString(subtitleStyle.Render("需要口令的密钥会先让你输入一次（macOS 可存进钥匙串，之后不再问）。") + "\n\n")
+	for index, key := range m.keys {
+		marker := "  "
+		if index == m.keyIndex {
+			marker = "> "
+		}
+		label := key.Name
+		if key.NeedsPassphrase {
+			label += "（需要口令）"
+		}
+		if index == m.keyIndex {
+			builder.WriteString(menuSelected.Render(marker+label) + "\n")
+		} else {
+			builder.WriteString(marker + label + "\n")
+		}
+	}
+	return builder.String()
 }
 
 func (m Model) viewBind() string {

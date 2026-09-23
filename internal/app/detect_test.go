@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -85,5 +86,62 @@ func TestDetectorOffersVerifiedSSHKeys(t *testing.T) {
 	}
 	if !strings.Contains(candidates[0].Label, "id_ed25519") {
 		t.Fatalf("label = %q", candidates[0].Label)
+	}
+}
+
+func TestKeyNeedsPassphraseWithRealKeys(t *testing.T) {
+	dir := t.TempDir()
+	plain := dir + "/id_ed25519_plain"
+	locked := dir + "/id_ed25519_locked"
+	if out, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "test", "-f", plain).CombinedOutput(); err != nil {
+		t.Skipf("ssh-keygen unavailable: %v %s", err, out)
+	}
+	if out, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "secret", "-C", "test", "-f", locked).CombinedOutput(); err != nil {
+		t.Skipf("ssh-keygen unavailable: %v %s", err, out)
+	}
+
+	if keyNeedsPassphrase(plain) {
+		t.Fatal("unencrypted key reported as needing a passphrase")
+	}
+	if !keyNeedsPassphrase(locked) {
+		t.Fatal("encrypted key reported as unencrypted")
+	}
+	if keyNeedsPassphrase(dir + "/does-not-exist") {
+		t.Fatal("missing file must not report a passphrase")
+	}
+}
+
+func TestSSHKeyInfosListsKeysWithPassphraseHint(t *testing.T) {
+	home := t.TempDir()
+	sshDir := home + "/.ssh"
+	if err := osMkdirAll(sshDir); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "secret", "-f", sshDir+"/id_ed25519_locked").CombinedOutput(); err != nil {
+		t.Skipf("ssh-keygen unavailable: %v %s", err, out)
+	}
+	if err := osWriteFile(sshDir+"/known_hosts", []byte("host"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	detector := NewDetector(Deps{}, failingTokens{}, stubDetectParser{})
+	detector.homeDir = func() (string, error) { return home, nil }
+
+	infos := detector.SSHKeyInfos()
+	if len(infos) != 1 || infos[0].Name != "id_ed25519_locked" {
+		t.Fatalf("infos = %+v", infos)
+	}
+	if !infos[0].NeedsPassphrase {
+		t.Fatal("locked key must be flagged")
+	}
+}
+
+func TestVerifySSHKeyUsesProviderResult(t *testing.T) {
+	detector := NewDetector(Deps{SSH: stubDetectSSH{}}, failingTokens{}, stubDetectParser{})
+	detector.homeDir = func() (string, error) { return t.TempDir(), nil }
+
+	candidate, ok := detector.VerifySSHKey(context.Background(), domain.ProviderGitHub, "github.com", "/tmp/key")
+	if !ok || candidate.Username != "lunafoundry" || candidate.Kind != "ssh-key" {
+		t.Fatalf("candidate = %+v ok=%v", candidate, ok)
 	}
 }

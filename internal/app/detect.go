@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -192,6 +194,112 @@ func providerLabel(providerType domain.ProviderType) string {
 	default:
 		return string(providerType)
 	}
+}
+
+// SSHKeyInfo describes one local private key offered to the user.
+type SSHKeyInfo struct {
+	Path            string
+	Name            string
+	NeedsPassphrase bool
+}
+
+// SSHKeyInfos lists usable private keys under ~/.ssh. NeedsPassphrase is read
+// from the key file itself (no prompt, no process), so the UI can tell the user
+// why a key cannot be used non-interactively yet.
+func (d *Detector) SSHKeyInfos() []SSHKeyInfo {
+	home, err := d.homeDir()
+	if err != nil {
+		return nil
+	}
+	sshDir := filepath.Join(home, ".ssh")
+	entries, err := os.ReadDir(sshDir)
+	if err != nil {
+		return nil
+	}
+	var infos []SSHKeyInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !looksLikePrivateKey(entry.Name()) {
+			continue
+		}
+		path := filepath.Join(sshDir, entry.Name())
+		infos = append(infos, SSHKeyInfo{
+			Path: path, Name: entry.Name(), NeedsPassphrase: keyNeedsPassphrase(path),
+		})
+	}
+	sort.Slice(infos, func(i, j int) bool { return infos[i].Name < infos[j].Name })
+	return infos
+}
+
+// VerifySSHKey probes one key against the provider and returns a candidate when
+// the provider accepts it (used after loading a key into ssh-agent).
+func (d *Detector) VerifySSHKey(ctx context.Context, providerType domain.ProviderType, host, keyPath string) (Candidate, bool) {
+	if d.deps.SSH == nil || d.parsers == nil {
+		return Candidate{}, false
+	}
+	endpoint, ok := domain.DefaultEndpoint(providerType)
+	if !ok {
+		return Candidate{}, false
+	}
+	if host != "" {
+		endpoint.Host = host
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, d.probeTimeout)
+	defer cancel()
+	result, err := d.deps.SSH.Test(probeCtx, ports.SSHTestRequest{
+		Host: endpoint.Host, User: endpoint.SSHUser, Port: endpoint.SSHPort, PrivateKeyPath: keyPath,
+	})
+	if err != nil {
+		return Candidate{}, false
+	}
+	username, ok := d.parsers.ParseSSHIdentity(ctx, providerType, result.Stdout, result.Stderr)
+	if !ok || username == "" {
+		return Candidate{}, false
+	}
+	return Candidate{
+		Kind: "ssh-key", Source: "ssh", Host: endpoint.Host, Provider: providerType,
+		Username: username, KeyPath: keyPath,
+		Label: fmt.Sprintf("使用已有密钥 %s（已验证属于 %s）", filepath.Base(keyPath), username),
+	}, true
+}
+
+// keyNeedsPassphrase inspects a private key file (OpenSSH or legacy PEM) and
+// reports whether it is encrypted.
+func keyNeedsPassphrase(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	text := string(data)
+	if strings.Contains(text, "Proc-Type: 4,ENCRYPTED") {
+		return true // legacy PEM
+	}
+	const header = "-----BEGIN OPENSSH PRIVATE KEY-----"
+	start := strings.Index(text, header)
+	if start < 0 {
+		return false
+	}
+	body := text[start+len(header):]
+	if end := strings.Index(body, "-----END"); end >= 0 {
+		body = body[:end]
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(body), ""))
+	if err != nil {
+		return false
+	}
+	magic := "openssh-key-v1\x00"
+	if !strings.HasPrefix(string(decoded), magic) {
+		return false
+	}
+	rest := decoded[len(magic):]
+	if len(rest) < 4 {
+		return false
+	}
+	length := int(binary.BigEndian.Uint32(rest[:4]))
+	if length <= 0 || len(rest) < 4+length {
+		return false
+	}
+	cipher := string(rest[4 : 4+length])
+	return cipher != "none"
 }
 
 // SSHLoginRequest registers an account backed by an existing SSH key.

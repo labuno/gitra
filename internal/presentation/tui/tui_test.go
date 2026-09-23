@@ -1126,3 +1126,36 @@ func TestPickerMarksSurviveNavigation(t *testing.T) {
 		t.Fatalf("bulk row must still be offered after navigation:\n%s", model.View())
 	}
 }
+
+func TestSSHKeyOptionOpensTheKeyPicker(t *testing.T) {
+	model, _ := newTestModel(t)
+	model, _ = press(t, model, "a")
+	updated, _ := model.Update(candidatesMsg{})
+	model = updated.(Model)
+	model.login.detecting = false
+
+	view := model.View()
+	if !strings.Contains(view, "使用本地 SSH 密钥") {
+		t.Fatalf("login must offer the SSH key path:\n%s", view)
+	}
+
+	// Move to the SSH key row and open it.
+	for index, option := range model.loginOptionList() {
+		if option.kind == loginOptionSSHKey {
+			model.login.methodIndex = index
+		}
+	}
+	model, _ = press(t, model, "enter")
+	if model.screen != screenKeyPick {
+		t.Fatalf("screen = %v, want the key picker", model.screen)
+	}
+	if !strings.Contains(model.View(), "SSH 密钥登录 GitHub") {
+		t.Fatalf("picker view:\n%s", model.View())
+	}
+
+	// Esc returns to the login list.
+	model, _ = press(t, model, "esc")
+	if model.screen != screenLogin {
+		t.Fatalf("esc must return to login, got %v", model.screen)
+	}
+}

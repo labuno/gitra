@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -366,6 +367,34 @@ func (m *Model) browserLoginCommand(providerType domain.ProviderType, host strin
 	return tea.ExecProcess(command, func(err error) tea.Msg {
 		return cliLoginResultMsg{err: err}
 	})
+}
+
+// loadKeyCommand hands the terminal to ssh-add so the user can type the
+// passphrase once. On macOS the passphrase is stored in the login keychain.
+func (m *Model) loadKeyCommand(keyPath string) tea.Cmd {
+	args := []string{}
+	if runtime.GOOS == "darwin" {
+		args = append(args, "--apple-use-keychain")
+	}
+	args = append(args, keyPath)
+	command := exec.Command("ssh-add", args...)
+	return tea.ExecProcess(command, func(err error) tea.Msg {
+		return keyLoadedMsg{path: keyPath, err: err}
+	})
+}
+
+// verifyKeyCommand probes a key against the provider (agent-backed keys work).
+func (m *Model) verifyKeyCommand(keyPath string) tea.Cmd {
+	detector := m.app.Detector
+	providerType := m.login.keyPick.provider
+	host := m.login.keyPick.host
+	return func() tea.Msg {
+		if detector == nil {
+			return keyVerifiedMsg{path: keyPath}
+		}
+		candidate, ok := detector.VerifySSHKey(context.Background(), providerType, host, keyPath)
+		return keyVerifiedMsg{path: keyPath, candidate: candidate, ok: ok}
+	}
 }
 
 // detectCommand looks for reusable logins already present on this machine.

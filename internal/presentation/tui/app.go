@@ -70,6 +70,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case keyLoadedMsg:
+		m.busy = false
+		if msg.err != nil {
+			m.errText = "加载密钥没有完成：" + plainError(msg.err)
+			return m, nil
+		}
+		m.busy = true
+		m.message = "正在用这把密钥验证身份…"
+		return m, m.verifyKeyCommand(msg.path)
+
+	case keyVerifiedMsg:
+		m.busy = false
+		if !msg.ok {
+			m.errText = fmt.Sprintf("这把密钥没有被 %s 接受：可能还没把公钥添加到该账号，或它不是这个平台的密钥。",
+				providerLabel(m.login.keyPick.provider))
+			m.screen = screenKeyPick
+			return m, nil
+		}
+		m.message = fmt.Sprintf("已验证：这把密钥属于 %s", msg.candidate.Username)
+		m.busy = true
+		return m, m.sshKeyLoginCommand(msg.candidate)
+
 	case cliLoginResultMsg:
 		m.busy = false
 		if msg.err != nil {
@@ -278,6 +300,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailKey(msg)
 	case screenLogin:
 		return m.handleLoginKey(msg)
+	case screenKeyPick:
+		return m.handleKeyPickKey(msg)
 	case screenBind:
 		return m.handleBindKey(msg)
 	case screenRemote:
@@ -530,6 +554,19 @@ func (m Model) activateLoginOption(index int) (tea.Model, tea.Cmd) {
 		}
 		m.message = "正在使用本机已登录的账号…"
 		return m, m.loginCommand(providerAt(m.login.providerIndex), "", true)
+	case loginOptionSSHKey:
+		providerType := providerAt(m.login.providerIndex)
+		host := defaultHost(providerType)
+		keys := []app.SSHKeyInfo{}
+		if m.app.Detector != nil {
+			keys = m.app.Detector.SSHKeyInfos()
+		}
+		m.keys = keys
+		m.keyIndex = 0
+		m.login.keyPick = keyPickState{provider: providerType, host: host}
+		m.message, m.errText = "", ""
+		m.screen = screenKeyPick
+		return m, nil
 	case loginOptionBrowser:
 		providerType := providerAt(m.login.providerIndex)
 		host := defaultHost(providerType)
@@ -562,10 +599,10 @@ func (m Model) loginOptionList() []loginOption {
 			label: fmt.Sprintf("在浏览器里登录 %s（使用官方 %s 客户端，推荐）", providerLabel(providerType), client),
 		})
 	}
-	options = append(options, loginOption{
-		kind:  loginOptionManual,
-		label: "粘贴访问码（高级：自己去网页创建）",
-	})
+	options = append(options,
+		loginOption{kind: loginOptionSSHKey, label: "使用本地 SSH 密钥…（带口令的会在这里让你输入一次）"},
+		loginOption{kind: loginOptionManual, label: "粘贴访问码（高级：自己去网页创建）"},
+	)
 	return options
 }
 
@@ -583,6 +620,39 @@ func (m Model) requestQuit() (tea.Model, tea.Cmd) {
 		return func() tea.Msg { return quitConfirmedMsg{} }
 	}
 	m.screen = screenConfirm
+	return m, nil
+}
+
+// handleKeyPickKey drives the SSH key picker.
+func (m Model) handleKeyPickKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.screen = screenLogin
+		m.errText = ""
+		return m, nil
+	case "up", "k":
+		if m.keyIndex > 0 {
+			m.keyIndex--
+		}
+	case "down", "j":
+		if m.keyIndex < len(m.keys)-1 {
+			m.keyIndex++
+		}
+	case "enter":
+		if len(m.keys) == 0 {
+			m.errText = "没有找到可用的 SSH 私钥（~/.ssh 下没有 id_* 之类的文件）。"
+			return m, nil
+		}
+		key := m.keys[m.keyIndex]
+		if key.NeedsPassphrase {
+			m.busy = true
+			m.message = "这把密钥需要口令：请在下方输入一次（macOS 会存进钥匙串）"
+			return m, m.loadKeyCommand(key.Path)
+		}
+		m.busy = true
+		m.message = "正在用这把密钥验证身份…"
+		return m, m.verifyKeyCommand(key.Path)
+	}
 	return m, nil
 }
 
