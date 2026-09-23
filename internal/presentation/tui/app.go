@@ -70,10 +70,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case browserLoginRequestedMsg:
+		providerType := msg.provider
+		if _, ok := browserLoginCLI(providerType); !ok {
+			m.errText = "这台电脑没有官方 GitHub 客户端。可以改用「粘贴访问码」，或先安装 gh（可选）。"
+			m.screen = screenLogin
+			return m, nil
+		}
+		host := defaultHost(providerType)
+		m.message = "请在浏览器里完成授权…"
+		m.busy = true
+		m.screen = screenLogin
+		return m, m.browserLoginCommand(providerType, host)
+
 	case keyLoadedMsg:
 		m.busy = false
 		if msg.err != nil {
-			m.errText = "加载密钥没有完成：" + plainError(msg.err)
+			providerType := m.login.keyPick.provider
+			m.confirmPrompt = fmt.Sprintf(
+				"密钥没有加载成功（口令可能输错了）。\n\n要改用浏览器登录 %s 吗？（不需要密钥，点一次「授权」就好）",
+				providerLabel(providerType))
+			m.confirmAction = func() tea.Cmd {
+				return func() tea.Msg { return browserLoginRequestedMsg{provider: providerType} }
+			}
+			m.screen = screenConfirm
 			return m, nil
 		}
 		m.busy = true
@@ -83,9 +103,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case keyVerifiedMsg:
 		m.busy = false
 		if !msg.ok {
-			m.errText = fmt.Sprintf("这把密钥没有被 %s 接受：可能还没把公钥添加到该账号，或它不是这个平台的密钥。",
-				providerLabel(m.login.keyPick.provider))
-			m.screen = screenKeyPick
+			// Never ask the user to copy a public key around: offer the
+			// zero-knowledge alternative instead (browser authorization).
+			providerType := m.login.keyPick.provider
+			m.confirmPrompt = fmt.Sprintf(
+				"这把密钥没有被 %s 接受。\n\n要改用浏览器登录吗？（推荐：不需要密钥，点一次「授权」就好）",
+				providerLabel(providerType))
+			m.confirmAction = func() tea.Cmd {
+				return func() tea.Msg { return browserLoginRequestedMsg{provider: providerType} }
+			}
+			m.screen = screenConfirm
 			return m, nil
 		}
 		m.message = fmt.Sprintf("已验证：这把密钥属于 %s", msg.candidate.Username)

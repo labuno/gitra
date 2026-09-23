@@ -434,7 +434,11 @@ func (m Model) viewKeyPick() string {
 		builder.WriteString(subtitleStyle.Render("没有在 ~/.ssh 下找到可用的私钥。") + "\n")
 		return builder.String()
 	}
-	builder.WriteString(subtitleStyle.Render("需要口令的密钥会先让你输入一次（macOS 可存进钥匙串，之后不再问）。") + "\n\n")
+	if len(m.keys) > 0 && !m.keys[0].NeedsPassphrase {
+		builder.WriteString(subtitleStyle.Render("已默认选中可直接使用的密钥；带口令的密钥排在最下面，会先让你输入一次。") + "\n\n")
+	} else {
+		builder.WriteString(subtitleStyle.Render("需要口令的密钥会先让你输入一次（macOS 会存进钥匙串，之后不再问）。") + "\n\n")
+	}
 	for index, key := range m.keys {
 		marker := "  "
 		if index == m.keyIndex {

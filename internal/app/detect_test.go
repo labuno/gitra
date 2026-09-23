@@ -145,3 +145,31 @@ func TestVerifySSHKeyUsesProviderResult(t *testing.T) {
 		t.Fatalf("candidate = %+v ok=%v", candidate, ok)
 	}
 }
+
+func TestSSHKeyInfosPrefersKeysThatWorkImmediately(t *testing.T) {
+	home := t.TempDir()
+	sshDir := home + "/.ssh"
+	if err := osMkdirAll(sshDir); err != nil {
+		t.Fatal(err)
+	}
+	// "zz_locked" sorts last alphabetically but must be listed after usable keys.
+	if out, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", sshDir+"/id_ed25519_aa_plain").CombinedOutput(); err != nil {
+		t.Skipf("ssh-keygen unavailable: %v %s", err, out)
+	}
+	if out, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "secret", "-f", sshDir+"/id_rsa_zz_locked").CombinedOutput(); err != nil {
+		t.Skipf("ssh-keygen unavailable: %v %s", err, out)
+	}
+
+	detector := NewDetector(Deps{}, failingTokens{}, stubDetectParser{})
+	detector.homeDir = func() (string, error) { return home, nil }
+	infos := detector.SSHKeyInfos()
+	if len(infos) != 2 {
+		t.Fatalf("infos = %+v", infos)
+	}
+	if infos[0].Name != "id_ed25519_aa_plain" || infos[0].NeedsPassphrase {
+		t.Fatalf("usable key must come first: %+v", infos)
+	}
+	if !infos[1].NeedsPassphrase {
+		t.Fatalf("locked key must be flagged: %+v", infos)
+	}
+}

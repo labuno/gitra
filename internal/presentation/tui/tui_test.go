@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -1157,5 +1158,60 @@ func TestSSHKeyOptionOpensTheKeyPicker(t *testing.T) {
 	model, _ = press(t, model, "esc")
 	if model.screen != screenLogin {
 		t.Fatalf("esc must return to login, got %v", model.screen)
+	}
+}
+
+func TestRejectedKeyOffersBrowserLoginInstead(t *testing.T) {
+	model, _ := newTestModel(t)
+	withFakeLookPath(t, map[string]string{"gh": "/opt/homebrew/bin/gh"})
+	model.login.keyPick = keyPickState{provider: domain.ProviderGitHub, host: "github.com"}
+	model.screen = screenKeyPick
+
+	// The provider rejects the key: gitra must offer the copy-free alternative.
+	updated, _ := model.Update(keyVerifiedMsg{path: "/tmp/key", ok: false})
+	model = updated.(Model)
+	if model.screen != screenConfirm {
+		t.Fatalf("screen = %v, want a confirmation offering the alternative", model.screen)
+	}
+	if !strings.Contains(model.confirmPrompt, "改用浏览器登录") {
+		t.Fatalf("prompt = %q", model.confirmPrompt)
+	}
+	if strings.Contains(model.confirmPrompt, "复制") {
+		t.Fatalf("must not ask the user to copy anything: %q", model.confirmPrompt)
+	}
+
+	// Confirming starts the browser login.
+	model, cmd := press(t, model, "y")
+	model = runCmd(t, model, cmd)
+	if !model.busy || cmd == nil {
+		t.Fatalf("browser login must start: busy=%v", model.busy)
+	}
+}
+
+func TestFailedKeyLoadOffersBrowserLogin(t *testing.T) {
+	model, _ := newTestModel(t)
+	withFakeLookPath(t, map[string]string{"gh": "/opt/homebrew/bin/gh"})
+	model.login.keyPick = keyPickState{provider: domain.ProviderGitHub, host: "github.com"}
+
+	updated, _ := model.Update(keyLoadedMsg{path: "/tmp/key", err: errors.New("incorrect passphrase")})
+	model = updated.(Model)
+	if model.screen != screenConfirm || !strings.Contains(model.confirmPrompt, "改用浏览器登录") {
+		t.Fatalf("screen=%v prompt=%q", model.screen, model.confirmPrompt)
+	}
+}
+
+func TestKeyPickerDefaultsToUsableKeysFirst(t *testing.T) {
+	model, _ := newTestModel(t)
+	model.keys = []app.SSHKeyInfo{
+		{Path: "/home/.ssh/id_ed25519_aa", Name: "id_ed25519_aa"},
+		{Path: "/home/.ssh/id_rsa_zz", Name: "id_rsa_zz", NeedsPassphrase: true},
+	}
+	model.login.keyPick = keyPickState{provider: domain.ProviderGitHub, host: "github.com"}
+	view := model.View() + model.viewKeyPick()
+	if !strings.Contains(view, "已默认选中可直接使用的密钥") {
+		t.Fatalf("picker must state the default:\n%s", view)
+	}
+	if !strings.Contains(model.viewKeyPick(), "id_rsa_zz（需要口令）") {
+		t.Fatalf("locked keys must be labelled:\n%s", model.viewKeyPick())
 	}
 }

@@ -226,7 +226,13 @@ func (d *Detector) SSHKeyInfos() []SSHKeyInfo {
 			Path: path, Name: entry.Name(), NeedsPassphrase: keyNeedsPassphrase(path),
 		})
 	}
-	sort.Slice(infos, func(i, j int) bool { return infos[i].Name < infos[j].Name })
+	// Defaults matter: offer keys that work right away first, locked ones after.
+	sort.Slice(infos, func(i, j int) bool {
+		if infos[i].NeedsPassphrase != infos[j].NeedsPassphrase {
+			return !infos[i].NeedsPassphrase
+		}
+		return infos[i].Name < infos[j].Name
+	})
 	return infos
 }
 

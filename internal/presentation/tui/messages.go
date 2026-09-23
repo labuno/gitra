@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/zhanhd/gitra/internal/app"
+import (
+	"github.com/zhanhd/gitra/internal/app"
+	"github.com/zhanhd/gitra/internal/domain"
+)
 
 // Messages exchanged between tea.Cmd work and the Update loop (baseline §40).
 type accountsLoadedMsg struct {
@@ -99,4 +102,10 @@ type keyVerifiedMsg struct {
 	path      string
 	candidate app.Candidate
 	ok        bool
+}
+
+// browserLoginRequestedMsg asks the login flow to fall back to browser
+// authorization (used when a key cannot be used).
+type browserLoginRequestedMsg struct {
+	provider domain.ProviderType
 }
