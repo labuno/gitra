@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/zhanhd/gitra/internal/domain"
 )
@@ -71,7 +72,10 @@ func plainError(err error) string {
 	case errors.Is(err, domain.ErrUnsupportedRepo):
 		return "暂不支持这种仓库类型（例如裸仓库或 worktree）。"
 	case errors.Is(err, domain.ErrUnsupportedRemote):
-		return "仓库地址不受支持：请在 Git 里把远程地址改成 https://… 或 git@… 形式。"
+		// The application layer already writes user-facing text here (for
+		// example "this repository uses SSH while the account is HTTPS"), so
+		// show it verbatim instead of a generic sentence.
+		return strings.TrimSpace(err.Error())
 	case errors.Is(err, domain.ErrProviderMismatch):
 		return "仓库地址与账号不是同一个平台，请检查是否选错了账号。"
 	case errors.Is(err, domain.ErrAccountNotFound):

@@ -248,41 +248,135 @@ func (s *BindingService) EnsureOriginRemote(ctx context.Context, path, url strin
 type BatchItemResult struct {
 	Path   string
 	Status string // bound | already | skipped | failed
+	// Account is the alias that ended up owning the binding (may differ from the
+	// requested account when another one matches the remote better).
+	Account string
+	// Reason is a ready-to-show explanation for anything that did not bind.
+	Reason string
 	Err    error
 }
 
-// BindMany binds several folders to one account, one folder per transaction.
-// A folder that is not a repository, has no remote or fails validation is
-// reported instead of aborting the whole batch.
-func (s *BindingService) BindMany(ctx context.Context, accountID domain.AccountID, paths []string) ([]BatchItemResult, error) {
-	account, err := s.deps.Accounts.Get(ctx, accountID)
-	if err != nil {
-		return nil, err
+// BindMany binds several folders, choosing the account that fits each remote.
+// accountIDs are preferences: the requested account is tried first, then the
+// others, so an SSH-key account and an HTTPS account can share one batch.
+func (s *BindingService) BindMany(ctx context.Context, accountIDs []domain.AccountID, paths []string) ([]BatchItemResult, error) {
+	accounts := make([]domain.Account, 0, len(accountIDs))
+	for _, id := range accountIDs {
+		account, err := s.deps.Accounts.Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	if len(accounts) == 0 {
+		return nil, fmt.Errorf("%w: no account to bind with", domain.ErrAccountNotFound)
 	}
 	results := make([]BatchItemResult, 0, len(paths))
 	for _, path := range paths {
-		results = append(results, s.bindOne(ctx, account, path))
+		results = append(results, s.bindOne(ctx, accounts, path))
 	}
 	return results, nil
 }
 
-func (s *BindingService) bindOne(ctx context.Context, account domain.Account, path string) BatchItemResult {
+func (s *BindingService) bindOne(ctx context.Context, accounts []domain.Account, path string) BatchItemResult {
 	repo, err := s.deps.Git.DiscoverRepository(ctx, path)
 	if err != nil {
-		return BatchItemResult{Path: path, Status: "skipped", Err: err}
+		if errors.Is(err, domain.ErrNotGitRepository) {
+			return BatchItemResult{Path: path, Status: "skipped", Reason: "这个文件夹不是 Git 仓库，已跳过"}
+		}
+		return BatchItemResult{Path: path, Status: "failed", Reason: "无法读取这个文件夹：" + err.Error(), Err: err}
 	}
-	if _, found, err := s.deps.Bindings.FindByRepository(ctx, repo.RootPath); err != nil {
-		return BatchItemResult{Path: repo.RootPath, Status: "failed", Err: err}
+
+	if existing, found, err := s.deps.Bindings.FindByRepository(ctx, repo.RootPath); err != nil {
+		return BatchItemResult{Path: repo.RootPath, Status: "failed", Reason: err.Error(), Err: err}
 	} else if found {
-		return BatchItemResult{Path: repo.RootPath, Status: "already", Err: fmt.Errorf("已经绑定过了")}
+		return BatchItemResult{Path: repo.RootPath, Status: "already", Account: s.aliasOf(ctx, existing.AccountID), Reason: "已经绑定过了"}
 	}
-	if _, ok := repo.RemoteByName("origin"); !ok {
-		return BatchItemResult{Path: repo.RootPath, Status: "skipped", Err: fmt.Errorf("%w: 还没有仓库地址（需要单独绑定并创建）", domain.ErrUnsupportedRemote)}
+
+	remote, hasRemote := repo.RemoteByName("origin")
+	if !hasRemote {
+		return BatchItemResult{
+			Path: repo.RootPath, Status: "skipped",
+			Reason: "还没有仓库地址（单独绑定这个文件夹时会帮你创建）",
+			Err:    fmt.Errorf("%w: no origin", domain.ErrUnsupportedRemote),
+		}
 	}
-	if _, err := s.Bind(ctx, BindRequest{AccountID: account.ID, Path: repo.RootPath}); err != nil {
-		return BatchItemResult{Path: repo.RootPath, Status: "failed", Err: err}
+
+	transport, host, perr := remoteTransport(remote.URL)
+	if perr != nil {
+		return BatchItemResult{
+			Path: repo.RootPath, Status: "failed",
+			Reason: "仓库地址不是 SSH 或 HTTPS 形式（例如本地路径/file://），gitra 无法校验",
+			Err:    perr,
+		}
 	}
-	return BatchItemResult{Path: repo.RootPath, Status: "bound"}
+
+	// Prefer the requested account, then any other that matches this remote.
+	var match *domain.Account
+	var sawWrongTransport bool
+	for index := range accounts {
+		account := accounts[index]
+		if !strings.EqualFold(account.Provider.Endpoint.Host, host) {
+			continue
+		}
+		if s.transportOf(account) != transport {
+			sawWrongTransport = true
+			continue
+		}
+		match = &accounts[index]
+		break
+	}
+	if match == nil {
+		reason := fmt.Sprintf("这个仓库用的是 %s 地址，但账号 %s 不匹配", transportLabel(transport), accounts[0].Alias)
+		if sawWrongTransport {
+			reason = fmt.Sprintf("这个仓库用的是 %s 地址，而你选的账号是另一种类型；请用对应的账号绑它（例如换一个 %s 登录的账号）",
+				transportLabel(transport), transportLabel(transport))
+		}
+		return BatchItemResult{Path: repo.RootPath, Status: "failed", Reason: reason, Err: fmt.Errorf("%w: transport mismatch", domain.ErrUnsupportedRemote)}
+	}
+
+	if _, err := s.Bind(ctx, BindRequest{AccountID: match.ID, Path: repo.RootPath}); err != nil {
+		return BatchItemResult{Path: repo.RootPath, Status: "failed", Reason: err.Error(), Err: err}
+	}
+	return BatchItemResult{Path: repo.RootPath, Status: "bound", Account: match.Alias}
+}
+
+// aliasOf resolves an account alias for reporting (best effort).
+func (s *BindingService) aliasOf(ctx context.Context, id domain.AccountID) string {
+	if account, err := s.deps.Accounts.Get(ctx, id); err == nil {
+		return account.Alias
+	}
+	return string(id)
+}
+
+// transportOf reports which remote transport an account can authenticate.
+func (s *BindingService) transportOf(account domain.Account) domain.RemoteTransport {
+	if strategy, err := s.deps.Auth.Get(account.Transport.Strategy); err == nil {
+		return strategy.Transport()
+	}
+	if account.Transport.Strategy == domain.StrategyHTTPSToken {
+		return domain.RemoteTransportHTTPS
+	}
+	return domain.RemoteTransportSSH
+}
+
+// remoteTransport classifies a remote URL.
+func remoteTransport(raw string) (domain.RemoteTransport, string, error) {
+	if parsed, err := domain.ParseHTTPSRemoteURL(raw); err == nil {
+		return domain.RemoteTransportHTTPS, parsed.Host, nil
+	}
+	parsed, err := domain.ParseRemoteURL(raw)
+	if err != nil {
+		return "", "", err
+	}
+	return domain.RemoteTransportSSH, parsed.Host, nil
+}
+
+func transportLabel(transport domain.RemoteTransport) string {
+	if transport == domain.RemoteTransportHTTPS {
+		return "HTTPS"
+	}
+	return "SSH"
 }
 
 // Unbind restores the pre-bind state and removes both records.
@@ -553,7 +647,9 @@ func validateRemote(account domain.Account, repo domain.Repository, transport do
 		parsed, err = domain.ParseRemoteURL(remote.URL)
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("%w (%s): %v", domain.ErrUnsupportedRemote, remote.Name, err)
+		return "", false, fmt.Errorf(
+			"%w: 这个仓库的地址不是 %s 形式（remote %s），请换用与地址类型一致的账号绑定",
+			domain.ErrUnsupportedRemote, transportLabel(transport), remote.Name)
 	}
 	if !equalFoldHost(parsed.Host, account.Provider.Endpoint.Host) {
 		return "", false, fmt.Errorf("%w: remote host %q does not match account endpoint %q", domain.ErrProviderMismatch, parsed.Host, account.Provider.Endpoint.Host)

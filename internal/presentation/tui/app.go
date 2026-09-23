@@ -203,22 +203,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		bound, already, skipped, failed := 0, 0, 0, 0
+		byAccount := map[string]int{}
 		var details []string
 		for _, result := range msg.results {
+			reason := result.Reason
 			switch result.Status {
 			case "bound":
 				bound++
+				if result.Account != "" {
+					byAccount[result.Account]++
+				}
 			case "already":
 				already++
 			case "skipped":
 				skipped++
-				details = append(details, filepath.Base(result.Path)+"："+plainError(result.Err))
+				details = append(details, filepath.Base(result.Path)+"："+reason)
 			default:
 				failed++
-				details = append(details, filepath.Base(result.Path)+"："+plainError(result.Err))
+				details = append(details, filepath.Base(result.Path)+"："+reason)
 			}
 		}
 		m.message = fmt.Sprintf("批量绑定完成：成功 %d 个", bound)
+		if len(byAccount) > 1 {
+			m.message += "（"
+			first := true
+			for alias, count := range byAccount {
+				if !first {
+					m.message += "，"
+				}
+				m.message += fmt.Sprintf("%s 用了 %d 个", alias, count)
+				first = false
+			}
+			m.message += "）"
+		}
 		if already > 0 {
 			m.message += fmt.Sprintf("，已绑定 %d 个", already)
 		}
@@ -227,6 +244,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if failed > 0 {
 			m.message += fmt.Sprintf("，失败 %d 个", failed)
+		}
+		if len(details) > 8 {
+			details = append(details[:8], fmt.Sprintf("…还有 %d 条，见下方项目状态", len(details)-8))
 		}
 		m.errText = strings.Join(details, "\n")
 		m.lastBindDir = m.bind.path

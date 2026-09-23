@@ -301,11 +301,22 @@ func (m *Model) createAndBindCommand(account domain.Account, path string) tea.Cm
 	}
 }
 
-// bindManyCommand binds every marked folder to one account.
+// bindManyCommand binds every marked folder, letting gitra pick the account
+// that matches each remote (the selected account is the first preference).
 func (m *Model) bindManyCommand(account domain.Account, paths []string) tea.Cmd {
 	bindings := m.app.Bindings
+	accounts := m.app.Deps.Accounts
 	return func() tea.Msg {
-		results, err := bindings.BindMany(context.Background(), account.ID, paths)
+		ctx := context.Background()
+		preference := []domain.AccountID{account.ID}
+		if all, err := accounts.List(ctx); err == nil {
+			for _, candidate := range all {
+				if candidate.ID != account.ID {
+					preference = append(preference, candidate.ID)
+				}
+			}
+		}
+		results, err := bindings.BindMany(ctx, preference, paths)
 		return bindManyDoneMsg{results: results, err: err}
 	}
 }
