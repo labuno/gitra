@@ -8,9 +8,16 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 VERSION="${VERSION:-dev}"
-echo "构建 gitra 二进制 ... (version=${VERSION})"
-go build -trimpath -ldflags "-s -w -X github.com/zhanhd/gitra/internal/version.Version=${VERSION}" \
-  -o "$APP/Contents/Resources/gitra" ./cmd/gitra
+echo "构建 gitra 二进制 ... (version=${VERSION}, 通用架构)"
+LD_FLAGS="-s -w -X github.com/zhanhd/gitra/internal/version.Version=${VERSION}"
+# Build both architectures and merge them, so the same app runs on Intel and
+# Apple Silicon Macs alike.
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$LD_FLAGS" -o "$APP/Contents/Resources/gitra.arm64" ./cmd/gitra
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$LD_FLAGS" -o "$APP/Contents/Resources/gitra.amd64" ./cmd/gitra
+lipo -create -output "$APP/Contents/Resources/gitra" \
+  "$APP/Contents/Resources/gitra.arm64" "$APP/Contents/Resources/gitra.amd64"
+rm -f "$APP/Contents/Resources/gitra.arm64" "$APP/Contents/Resources/gitra.amd64"
+chmod +x "$APP/Contents/Resources/gitra"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

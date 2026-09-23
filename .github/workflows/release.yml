@@ -35,9 +35,23 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "$TAG" --generate-notes
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            exit 0
           fi
+          cat > release-notes.md <<'NOTES'
+          ## 该下载哪个文件？
+
+          **macOS 用户（推荐）**：下载 `Gitra.app.zip` → 解压 → 双击 `Gitra.app`
+          （首次打开若提示“身份不明的开发者”，右键 → 打开即可）
+
+          **命令行 / Linux / Windows**：下载对应平台的 `gitra-<系统>-<架构>`。
+          建议选 `.zip` 版本：解压后自带可执行权限；直接下载裸二进制会丢失该权限，
+          需要自己 `chmod +x`（macOS / Linux）后才能运行。
+
+          **校验完整性**：`checksums.txt` 是每个文件的 sha256。
+          NOTES
+          sed -i 's/^          //' release-notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file release-notes.md
 
   build:
     needs: prepare
@@ -69,7 +83,9 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X ${VERSION_PKG}=${VERSION}" \
             -o "dist/gitra-${GOOS}-${GOARCH}${ext}" ./cmd/gitra
-          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}" --clobber
+          # A zip keeps the executable bit, which browsers strip on raw downloads.
+          (cd dist && zip -q "gitra-${GOOS}-${GOARCH}${ext}.zip" "gitra-${GOOS}-${GOARCH}${ext}")
+          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}" "dist/gitra-${GOOS}-${GOARCH}${ext}.zip" --clobber
 
   macos-app:
     needs: prepare
