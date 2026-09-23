@@ -3,7 +3,6 @@ name: release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -23,8 +22,25 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
 
-  build:
+  # Create the release once so every build job can attach its own file
+  # directly: one copy per artefact, no intermediate workflow artefacts.
+  prepare:
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the release if it does not exist yet
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+
+  build:
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -37,12 +53,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build binary
+      - name: Build and attach the binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
-          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          VERSION: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           ext=""
@@ -50,14 +69,10 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags "-s -w -X ${VERSION_PKG}=${VERSION}" \
             -o "dist/gitra-${GOOS}-${GOARCH}${ext}" ./cmd/gitra
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gitra-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*
-          if-no-files-found: error
+          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}" --clobber
 
   macos-app:
-    needs: test
+    needs: prepare
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,43 +80,33 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build .app bundle
+      - name: Build and attach the macOS app bundle
         env:
-          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          VERSION: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
           ./scripts/build-app.sh
           ./dist/Gitra.app/Contents/Resources/gitra --version
           ditto -c -k --keepParent dist/Gitra.app dist/Gitra.app.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gitra-macos-app
-          path: dist/Gitra.app.zip
-          if-no-files-found: error
+          gh release upload "$TAG" dist/Gitra.app.zip --clobber
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
+  checksums:
     needs: [build, macos-app]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-      - name: Checksums
-        run: |
-          cd artifacts
-          sha256sum * > checksums.txt
-          cat checksums.txt
-      - name: Create or update the GitHub release
+      - name: Generate checksums from the published assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" artifacts/* --clobber
-          else
-            gh release create "$TAG" artifacts/* --title "$TAG" --generate-notes
-          fi
-          gh release view "$TAG" --json name,assets --jq '{name: .name, assets: [.assets[].name]}'
+          mkdir -p assets
+          gh release download "$TAG" --dir assets --clobber
+          rm -f assets/checksums.txt
+          (cd assets && sha256sum * > checksums.txt && cat checksums.txt)
+          gh release upload "$TAG" assets/checksums.txt --clobber
+          gh release view "$TAG" --json tagName,assets --jq '{tag: .tagName, assets: [.assets[].name]}'
