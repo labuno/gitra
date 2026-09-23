@@ -69,12 +69,13 @@ func (a *Adapter) baseURL(providerType domain.ProviderType, host string) string 
 }
 
 // Acquire implements ports.TokenProvider.
-func (a *Adapter) Acquire(ctx context.Context, providerType domain.ProviderType, explicit string, allowStdin, allowCLIReuse bool) (ports.LoginToken, error) {
+func (a *Adapter) Acquire(ctx context.Context, req ports.TokenRequest) (ports.LoginToken, error) {
 	token, err := a.resolver.Resolve(ctx, provider.TokenRequest{
-		Provider:      providerType,
-		ExplicitToken: explicit,
-		AllowStdin:    allowStdin,
-		AllowCLIReuse: allowCLIReuse,
+		Provider:      req.Provider,
+		Username:      req.Username,
+		ExplicitToken: req.Explicit,
+		AllowStdin:    req.AllowStdin,
+		AllowCLIReuse: req.AllowCLIReuse,
 	})
 	if err != nil {
 		return ports.LoginToken{}, err

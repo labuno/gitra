@@ -244,6 +244,47 @@ func (s *BindingService) EnsureOriginRemote(ctx context.Context, path, url strin
 	})
 }
 
+// BatchItemResult reports the outcome for one folder of a bulk bind.
+type BatchItemResult struct {
+	Path   string
+	Status string // bound | already | skipped | failed
+	Err    error
+}
+
+// BindMany binds several folders to one account, one folder per transaction.
+// A folder that is not a repository, has no remote or fails validation is
+// reported instead of aborting the whole batch.
+func (s *BindingService) BindMany(ctx context.Context, accountID domain.AccountID, paths []string) ([]BatchItemResult, error) {
+	account, err := s.deps.Accounts.Get(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]BatchItemResult, 0, len(paths))
+	for _, path := range paths {
+		results = append(results, s.bindOne(ctx, account, path))
+	}
+	return results, nil
+}
+
+func (s *BindingService) bindOne(ctx context.Context, account domain.Account, path string) BatchItemResult {
+	repo, err := s.deps.Git.DiscoverRepository(ctx, path)
+	if err != nil {
+		return BatchItemResult{Path: path, Status: "skipped", Err: err}
+	}
+	if _, found, err := s.deps.Bindings.FindByRepository(ctx, repo.RootPath); err != nil {
+		return BatchItemResult{Path: repo.RootPath, Status: "failed", Err: err}
+	} else if found {
+		return BatchItemResult{Path: repo.RootPath, Status: "already", Err: fmt.Errorf("已经绑定过了")}
+	}
+	if _, ok := repo.RemoteByName("origin"); !ok {
+		return BatchItemResult{Path: repo.RootPath, Status: "skipped", Err: fmt.Errorf("%w: 还没有仓库地址（需要单独绑定并创建）", domain.ErrUnsupportedRemote)}
+	}
+	if _, err := s.Bind(ctx, BindRequest{AccountID: account.ID, Path: repo.RootPath}); err != nil {
+		return BatchItemResult{Path: repo.RootPath, Status: "failed", Err: err}
+	}
+	return BatchItemResult{Path: repo.RootPath, Status: "bound"}
+}
+
 // Unbind restores the pre-bind state and removes both records.
 func (s *BindingService) Unbind(ctx context.Context, req UnbindRequest) error {
 	return s.deps.Locker.WithWriteLock(ctx, func() error {

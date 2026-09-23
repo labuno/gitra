@@ -15,12 +15,14 @@ const loginTimeout = 45 * time.Second
 
 // LoginRequest describes one provider login.
 type LoginRequest struct {
-	Provider      domain.ProviderType
-	Host          string
-	Alias         string
-	Token         string
-	AllowStdin    bool
-	AllowCLIReuse bool
+	Provider domain.ProviderType
+	Host     string
+	Alias    string
+	Token    string
+	// PreferredUsername selects one CLI account when the machine has several.
+	PreferredUsername string
+	AllowStdin        bool
+	AllowCLIReuse     bool
 }
 
 // LoginResult is the outcome of a successful login.
@@ -60,7 +62,13 @@ func (s *LoginService) Login(ctx context.Context, req LoginRequest) (LoginResult
 		return LoginResult{}, err
 	}
 
-	token, err := s.tokens.Acquire(ctx, req.Provider, req.Token, req.AllowStdin, req.AllowCLIReuse)
+	token, err := s.tokens.Acquire(ctx, ports.TokenRequest{
+		Provider:      req.Provider,
+		Username:      req.PreferredUsername,
+		Explicit:      req.Token,
+		AllowStdin:    req.AllowStdin,
+		AllowCLIReuse: req.AllowCLIReuse,
+	})
 	if err != nil {
 		return LoginResult{}, err
 	}

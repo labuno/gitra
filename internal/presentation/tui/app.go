@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -128,6 +129,51 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.confirmPrompt = "远端仓库已创建并绑定。\n\n要现在把本地代码首次上传吗？\n（只需这一次，之后在编辑器里同步即可）"
 			m.confirmAction = func() tea.Cmd { return m.publishCommand(path) }
 			m.screen = screenConfirm
+		}
+		return m, nil
+
+	case bindManyDoneMsg:
+		m.busy = false
+		if msg.err != nil {
+			m.errText = plainError(msg.err)
+			return m, nil
+		}
+		bound, already, skipped, failed := 0, 0, 0, 0
+		var details []string
+		for _, result := range msg.results {
+			switch result.Status {
+			case "bound":
+				bound++
+			case "already":
+				already++
+			case "skipped":
+				skipped++
+				details = append(details, filepath.Base(result.Path)+"："+plainError(result.Err))
+			default:
+				failed++
+				details = append(details, filepath.Base(result.Path)+"："+plainError(result.Err))
+			}
+		}
+		m.message = fmt.Sprintf("批量绑定完成：成功 %d 个", bound)
+		if already > 0 {
+			m.message += fmt.Sprintf("，已绑定 %d 个", already)
+		}
+		if skipped > 0 {
+			m.message += fmt.Sprintf("，跳过 %d 个", skipped)
+		}
+		if failed > 0 {
+			m.message += fmt.Sprintf("，失败 %d 个", failed)
+		}
+		m.errText = strings.Join(details, "\n")
+		m.bind.marked = map[string]bool{}
+		if m.detailAccount != nil {
+			m.loadDetailProjects(*m.detailAccount)
+		}
+		m.loadAccounts()
+		if m.detailAccount != nil {
+			m.screen = screenDetail
+		} else {
+			m.screen = screenAccounts
 		}
 		return m, nil
 
@@ -552,6 +598,10 @@ func providerAt(index int) domain.ProviderType {
 }
 
 func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.bind.manual {
+		return m.handleBindManualKey(msg)
+	}
+	options := m.bindOptionList()
 	switch msg.String() {
 	case "esc":
 		if m.detailAccount != nil {
@@ -559,33 +609,39 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.screen = screenAccounts
 		}
-		m.bind.manual = false
 		return m, nil
 	case "up", "k":
 		if m.bind.selected > 0 {
 			m.bind.selected--
 		}
 	case "down", "j":
-		if m.bind.selected < len(m.bind.entries)+1 {
+		if m.bind.selected < len(options)-1 {
 			m.bind.selected++
 		}
+	case " ":
+		m.toggleMark()
+	case "b":
+		return m.prepareBind()
 	case "e":
-		m.bind.manual = !m.bind.manual
-	case "backspace":
-		if m.bind.manual && len(m.bind.path) > 1 {
-			m.bind.path = strings.TrimRight(m.bind.path[:len(m.bind.path)-1], "/")
-			if m.bind.path == "" {
-				m.bind.path = "/"
-			}
-		}
+		m.bind.manual = true
 	case "enter":
-		if m.bind.manual {
-			return m.finishBind()
+		if m.bind.selected < 0 || m.bind.selected >= len(options) {
+			return m, nil
 		}
-		switch m.bind.selected {
-		case 0: // bind this folder (may first ask for a repository address)
+		option := options[m.bind.selected]
+		switch option.kind {
+		case bindOptionBulk:
+			paths := m.markedPaths()
+			if len(paths) == 0 {
+				return m, nil
+			}
+			m.busy = true
+			m.message = fmt.Sprintf("正在绑定 %d 个文件夹…", len(paths))
+			m.errText = ""
+			return m, m.bindManyCommand(m.bind.account, paths)
+		case bindOptionCurrent:
 			return m.prepareBind()
-		case 1: // go up
+		case bindOptionUp:
 			parent := filepath.Dir(m.bind.path)
 			entries, err := listDirs(parent)
 			if err != nil {
@@ -593,9 +649,8 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.bind.path, m.bind.entries, m.bind.selected = parent, entries, 0
-		default:
-			name := m.bind.entries[m.bind.selected-2]
-			next := filepath.Join(m.bind.path, name)
+		case bindOptionDir:
+			next := filepath.Join(m.bind.path, option.name)
 			entries, err := listDirs(next)
 			if err != nil {
 				m.errText = "无法读取文件夹：" + err.Error()
@@ -603,12 +658,89 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.bind.path, m.bind.entries, m.bind.selected = next, entries, 0
 		}
+	}
+	return m, nil
+}
+
+func (m Model) handleBindManualKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.bind.manual = false
+	case "backspace":
+		if len(m.bind.path) > 1 {
+			m.bind.path = strings.TrimRight(m.bind.path[:len(m.bind.path)-1], "/")
+			if m.bind.path == "" {
+				m.bind.path = "/"
+			}
+		}
+	case "enter":
+		m.bind.manual = false
+		return m.prepareBind()
 	default:
-		if m.bind.manual && msg.Type == tea.KeyRunes {
+		if msg.Type == tea.KeyRunes {
 			m.bind.path += string(msg.Runes)
 		}
 	}
 	return m, nil
+}
+
+// bindOptionList is the single source of truth for the picker rows.
+func (m Model) bindOptionList() []bindOption {
+	options := make([]bindOption, 0, len(m.bind.entries)+3)
+	if count := len(m.markedPaths()); count > 0 {
+		options = append(options, bindOption{
+			kind:  bindOptionBulk,
+			label: fmt.Sprintf("✓ 绑定已选的 %d 个文件夹（回车执行）", count),
+		})
+	}
+	options = append(options,
+		bindOption{kind: bindOptionCurrent, label: "使用这个文件夹（回车＝绑定它）"},
+		bindOption{kind: bindOptionUp, label: ".. （上一层，也可以按 Esc 返回）"},
+	)
+	for _, name := range m.bind.entries {
+		label := name
+		if m.bind.marked[filepath.Join(m.bind.path, name)] {
+			label = "✓ " + name
+		}
+		options = append(options, bindOption{kind: bindOptionDir, label: label, name: name})
+	}
+	return options
+}
+
+// toggleMark marks or unmarks the folder under the cursor.
+func (m *Model) toggleMark() {
+	options := m.bindOptionList()
+	if m.bind.selected < 0 || m.bind.selected >= len(options) {
+		return
+	}
+	option := options[m.bind.selected]
+	if option.kind != bindOptionDir {
+		m.errText = "空格用于标记文件夹：把光标移到子文件夹上再按空格，然后选「绑定已选的 N 个文件夹」。"
+		return
+	}
+	path := filepath.Join(m.bind.path, option.name)
+	if m.bind.marked[path] {
+		delete(m.bind.marked, path)
+	} else {
+		if m.bind.marked == nil {
+			m.bind.marked = map[string]bool{}
+		}
+		m.bind.marked[path] = true
+	}
+	m.errText = ""
+}
+
+// markedPaths returns the marked folders in listing order.
+func (m Model) markedPaths() []string {
+	if len(m.bind.marked) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(m.bind.marked))
+	for path := range m.bind.marked {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths
 }
 
 func (m Model) finishBind() (tea.Model, tea.Cmd) {

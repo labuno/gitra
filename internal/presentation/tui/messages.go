@@ -81,3 +81,9 @@ type remoteCheckMsg struct {
 	check app.RemoteCheck
 	err   error
 }
+
+// bindManyDoneMsg carries the per-folder results of a bulk bind.
+type bindManyDoneMsg struct {
+	results []app.BatchItemResult
+	err     error
+}

@@ -35,14 +35,23 @@ type Detector struct {
 	homeDir      func() (string, error)
 	probeTimeout time.Duration
 	maxKeys      int
+	// cliAccounts lists the accounts an official CLI has logged in (gh keeps
+	// several per host). The composition root injects it, so the application
+	// layer stays free of process execution details.
+	cliAccounts func(ctx context.Context, providerType domain.ProviderType, host string) []string
 }
 
 // NewDetector builds the detector.
 func NewDetector(deps Deps, tokens ports.TokenProvider, parsers ports.SSHIdentityParser) *Detector {
 	return &Detector{
 		deps: deps, tokens: tokens, parsers: parsers,
-		homeDir: os.UserHomeDir, probeTimeout: 4 * time.Second, maxKeys: 3,
+		homeDir: os.UserHomeDir, probeTimeout: 4 * time.Second, maxKeys: 8,
 	}
+}
+
+// SetCLIAccounts injects the official-CLI account lister (gh multi-account).
+func (d *Detector) SetCLIAccounts(fn func(ctx context.Context, providerType domain.ProviderType, host string) []string) {
+	d.cliAccounts = fn
 }
 
 // Detect returns the candidates for one provider, ready to render.
@@ -50,14 +59,27 @@ func (d *Detector) Detect(ctx context.Context, providerType domain.ProviderType,
 	var candidates []Candidate
 	if d.tokens != nil {
 		if providerType == domain.ProviderGitHub || providerType == domain.ProviderGitLab {
-			if _, err := d.tokens.Acquire(ctx, providerType, "", false, true); err == nil {
-				source := "gh"
-				if providerType == domain.ProviderGitLab {
-					source = "glab"
+			source := "gh"
+			if providerType == domain.ProviderGitLab {
+				source = "glab"
+			}
+			var accounts []string
+			if d.cliAccounts != nil {
+				accounts = d.cliAccounts(ctx, providerType, host)
+			}
+			if len(accounts) == 0 {
+				// Fall back to "whatever the CLI is logged in as".
+				if _, err := d.tokens.Acquire(ctx, ports.TokenRequest{Provider: providerType, AllowCLIReuse: true}); err == nil {
+					candidates = append(candidates, Candidate{
+						Kind: "cli", Source: source, Host: host, Provider: providerType,
+						Label: fmt.Sprintf("使用本机已登录的 %s（无需输入）", providerLabel(providerType)),
+					})
 				}
+			}
+			for _, account := range accounts {
 				candidates = append(candidates, Candidate{
-					Kind: "cli", Source: source, Host: host, Provider: providerType,
-					Label: fmt.Sprintf("使用本机已登录的 %s（无需输入）", providerLabel(providerType)),
+					Kind: "cli", Source: source, Host: host, Provider: providerType, Username: account,
+					Label: fmt.Sprintf("使用 %s 里已登录的账号 %s", source, account),
 				})
 			}
 		}

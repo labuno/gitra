@@ -64,6 +64,18 @@ func addSSHAccount(t *testing.T, application *bootstrap.App, alias string) {
 	}
 }
 
+// gitConfigOrEmpty reads a local git config key, reporting whether it exists.
+func gitConfigOrEmpty(t *testing.T, dir, key string) (string, bool) {
+	t.Helper()
+	cmd := exec.Command("git", "config", "--local", "--get", key)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(string(out)), true
+}
+
 func gitRunT(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
@@ -748,14 +760,14 @@ func TestBindViewExplainsEnter(t *testing.T) {
 	model.startBind(*model.detailAccount, t.TempDir())
 
 	view := model.View()
-	if !strings.Contains(view, "回车 = 绑定当前文件夹") {
+	if !strings.Contains(view, "回车 = 进入文件夹") || !strings.Contains(view, "绑定它") {
 		t.Fatalf("the picker must explain what Enter does:\n%s", view)
 	}
 	if !strings.Contains(view, "使用这个文件夹（回车＝绑定它）") {
 		t.Fatalf("the bind row must be labelled:\n%s", view)
 	}
-	if !strings.Contains(model.helpLine(), "在「使用这个文件夹」上＝绑定") {
-		t.Fatalf("help line = %q", model.helpLine())
+	if !strings.Contains(model.renderHelp(), "空格 标记多个") {
+		t.Fatalf("help must mention multi-select: %q", model.renderHelp())
 	}
 }
 
@@ -1002,5 +1014,115 @@ func TestHeaderShowsReleaseVersion(t *testing.T) {
 	version.Version = "dev"
 	if strings.Contains(model.View(), "dev") {
 		t.Fatalf("local builds should not advertise a version:\n%s", model.View())
+	}
+}
+
+// selectBindFolder moves the picker cursor onto a subfolder by name, which
+// keeps tests stable when the option list grows (marks add a bulk row).
+func selectBindFolder(model Model, name string) Model {
+	for index, option := range model.bindOptionList() {
+		if option.kind == bindOptionDir && option.name == name {
+			model.bind.selected = index
+			return model
+		}
+	}
+	return model
+}
+
+func TestPickerMarksMultipleFoldersAndBindsThem(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	root := t.TempDir()
+	for _, name := range []string{"alpha", "beta", "gamma"} {
+		dir := filepath.Join(root, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		gitRunT(t, dir, "init", "-q")
+		gitRunT(t, dir, "remote", "add", "origin", "https://github.com/luna/"+name+".git")
+	}
+
+	model.screen = screenBind
+	model.bind = bindState{path: root, entries: []string{"alpha", "beta", "gamma"}, account: account, marked: map[string]bool{}}
+	model.height = 30
+
+	// Mark two folders with the space key.
+	model = selectBindFolder(model, "alpha")
+	model, _ = press(t, model, " ")
+	model = selectBindFolder(model, "beta")
+	model, _ = press(t, model, " ")
+
+	if got := len(model.markedPaths()); got != 2 {
+		t.Fatalf("marked = %v, want 2", model.markedPaths())
+	}
+	view := model.View()
+	if !strings.Contains(view, "绑定已选的 2 个文件夹") || !strings.Contains(view, "✓ alpha") {
+		t.Fatalf("picker must show marks and the bulk row:\n%s", view)
+	}
+
+	// Enter on the bulk row binds them all.
+	model.bind.selected = 0
+	model, cmd := press(t, model, "enter")
+	if !model.busy || cmd == nil {
+		t.Fatalf("bulk bind must start: busy=%v", model.busy)
+	}
+	model = runCmd(t, model, cmd)
+	if !strings.Contains(model.message, "批量绑定完成") || !strings.Contains(model.message, "成功 2 个") {
+		t.Fatalf("summary = %q (err=%q)", model.message, model.errText)
+	}
+	if len(model.bind.marked) != 0 {
+		t.Fatalf("marks must be cleared after the batch: %v", model.bind.marked)
+	}
+
+	for _, name := range []string{"alpha", "beta"} {
+		dir := filepath.Join(root, name)
+		if got := gitRunT(t, dir, "config", "--local", "--get", "user.email"); got != "luna@example.com" {
+			t.Fatalf("%s user.email = %q", name, got)
+		}
+		if got := gitRunT(t, dir, "config", "--local", "--get", "gitra.bindingId"); got == "" {
+			t.Fatalf("%s missing gitra metadata", name)
+		}
+	}
+	if _, present := gitConfigOrEmpty(t, filepath.Join(root, "gamma"), "gitra.bindingId"); present {
+		t.Fatal("unmarked folder must stay untouched")
+	}
+}
+
+func TestPickerMarksSurviveNavigation(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	root := t.TempDir()
+	sub := filepath.Join(root, "alpha")
+	inner := filepath.Join(sub, "inner")
+	if err := os.MkdirAll(inner, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	model.screen = screenBind
+	model.bind = bindState{path: root, entries: []string{"alpha"}, account: account, marked: map[string]bool{}}
+	model = selectBindFolder(model, "alpha")
+	model, _ = press(t, model, " ")
+
+	// Descend into alpha, then go back up: the mark survives.
+	model = selectBindFolder(model, "alpha")
+	model, _ = press(t, model, "enter")
+	if model.bind.path != sub {
+		t.Fatalf("path = %q, want %q", model.bind.path, sub)
+	}
+	if len(model.markedPaths()) != 1 {
+		t.Fatalf("marks lost after descending: %v", model.markedPaths())
+	}
+	model, _ = press(t, model, "esc")
+	if model.screen != screenAccounts {
+		t.Fatalf("esc must return to the accounts screen (no detail was opened), got %v", model.screen)
+	}
+	model.screen = screenBind
+	model.bind.path, model.bind.entries, model.bind.selected = root, []string{"alpha"}, 0
+	if !strings.Contains(model.View(), "绑定已选的 1 个文件夹") {
+		t.Fatalf("bulk row must still be offered after navigation:\n%s", model.View())
 	}
 }

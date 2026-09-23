@@ -23,22 +23,33 @@ func (m *Model) ctx() context.Context { return context.Background() }
 // so reading stdin here would block the interface. The access code comes from
 // the masked input field instead.
 func loginRequest(provider domain.ProviderType, token string, allowCLI bool) app.LoginRequest {
+	return loginRequestFor(provider, "", token, allowCLI)
+}
+
+// loginRequestFor selects a specific CLI account when the machine has several.
+func loginRequestFor(provider domain.ProviderType, username, token string, allowCLI bool) app.LoginRequest {
 	return app.LoginRequest{
-		Provider:      provider,
-		Token:         token,
-		AllowStdin:    false,
-		AllowCLIReuse: allowCLI,
+		Provider:          provider,
+		PreferredUsername: username,
+		Token:             token,
+		AllowStdin:        false,
+		AllowCLIReuse:     allowCLI,
 	}
 }
 
 // loginCommand runs the provider login (explicit user action only).
 func (m *Model) loginCommand(provider domain.ProviderType, token string, allowCLI bool) tea.Cmd {
+	return m.loginCommandAs(provider, "", token, allowCLI)
+}
+
+// loginCommandAs logs in with one specific CLI account.
+func (m *Model) loginCommandAs(provider domain.ProviderType, username, token string, allowCLI bool) tea.Cmd {
 	login := m.app.Login
 	return func() tea.Msg {
 		if login == nil {
 			return loginDoneMsg{err: fmt.Errorf("登录功能不可用")}
 		}
-		result, err := login.Login(context.Background(), loginRequest(provider, token, allowCLI))
+		result, err := login.Login(context.Background(), loginRequestFor(provider, username, token, allowCLI))
 		if err != nil {
 			return loginDoneMsg{err: err, usedToken: token != ""}
 		}
@@ -213,7 +224,7 @@ func (m *Model) startBind(account domain.Account, path string) {
 		m.errText = "无法读取文件夹：" + err.Error()
 		return
 	}
-	m.bind = bindState{path: path, entries: entries, account: account}
+	m.bind = bindState{path: path, entries: entries, account: account, marked: map[string]bool{}}
 	m.screen = screenBind
 }
 
@@ -277,6 +288,15 @@ func (m *Model) createAndBindCommand(account domain.Account, path string) tea.Cm
 			return bindDoneMsg{path: path, alias: account.Alias, err: err}
 		}
 		return bindDoneMsg{path: path, alias: account.Alias, createdRemote: true}
+	}
+}
+
+// bindManyCommand binds every marked folder to one account.
+func (m *Model) bindManyCommand(account domain.Account, paths []string) tea.Cmd {
+	bindings := m.app.Bindings
+	return func() tea.Msg {
+		results, err := bindings.BindMany(context.Background(), account.ID, paths)
+		return bindManyDoneMsg{results: results, err: err}
 	}
 }
 

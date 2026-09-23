@@ -76,7 +76,7 @@ func (m Model) helpSegments() []string {
 	case screenLogin:
 		return []string{"↑↓ 选择", "Enter 确认", "Esc 返回"}
 	case screenBind:
-		return []string{"↑↓ 移动", "Enter 进入文件夹（在「使用这个文件夹」上＝绑定）", "E 粘贴路径", "Esc 返回"}
+		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "E 粘贴路径", "Esc 返回"}
 	case screenRemote:
 		return []string{"输入/粘贴仓库地址", "Enter 确认并绑定", "Esc 返回"}
 	case screenConfirm:
@@ -426,20 +426,16 @@ func (m Model) viewBind() string {
 	var builder strings.Builder
 	builder.WriteString("选择要绑定的项目文件夹\n\n")
 	builder.WriteString(subtitleStyle.Render(
-		"选子文件夹按回车 = 进入该文件夹；光标移到「使用这个文件夹」按回车 = 绑定当前文件夹。\n"+
-			"找不到目标时按 E 直接粘贴路径。") + "\n\n")
-	builder.WriteString("当前：")
+		"回车 = 进入文件夹；在「使用这个文件夹」上回车 = 绑定它。\n"+
+			"空格 = 标记多个文件夹，标记后选「绑定已选的 N 个文件夹」可一次绑定。") + "\n\n")
+	builder.WriteString("当前：" + accentStyle.Render(m.bind.path) + "\n\n")
 	if m.bind.manual {
-		builder.WriteString(accentStyle.Render(m.bind.path + "▌"))
-	} else {
-		builder.WriteString(accentStyle.Render(m.bind.path))
-	}
-	builder.WriteString("\n\n")
-	if m.bind.manual {
-		builder.WriteString(subtitleStyle.Render("手动输入模式：输入路径后回车绑定，按 E 返回列表选择。") + "\n")
+		builder.WriteString(accentStyle.Render(m.bind.path+"▌") + "\n")
+		builder.WriteString(subtitleStyle.Render("手动输入模式：输入路径后回车绑定，按 Esc 返回列表选择。") + "\n")
 		return builder.String()
 	}
-	options := append([]string{"✓ 使用这个文件夹（回车＝绑定它）", ".. （上一层，也可以按 Esc 返回）"}, m.bind.entries...)
+
+	options := m.bindOptionList()
 	size := m.visibleRows()
 	start, end := windowRange(len(options), m.bind.selected, size)
 	if start > 0 {
@@ -451,9 +447,9 @@ func (m Model) viewBind() string {
 			marker = "> "
 		}
 		if index == m.bind.selected {
-			builder.WriteString(menuSelected.Render(marker+options[index]) + "\n")
+			builder.WriteString(menuSelected.Render(marker+options[index].label) + "\n")
 		} else {
-			builder.WriteString(marker + options[index] + "\n")
+			builder.WriteString(marker + options[index].label + "\n")
 		}
 	}
 	if end < len(options) {

@@ -9,12 +9,14 @@ import (
 	"time"
 
 	"github.com/zhanhd/gitra/internal/adapters/gitcli"
+	"github.com/zhanhd/gitra/internal/adapters/provider"
 	"github.com/zhanhd/gitra/internal/adapters/provider/router"
 	"github.com/zhanhd/gitra/internal/adapters/runner"
 	"github.com/zhanhd/gitra/internal/adapters/secretstore"
 	"github.com/zhanhd/gitra/internal/adapters/sshcli"
 	"github.com/zhanhd/gitra/internal/adapters/storage"
 	"github.com/zhanhd/gitra/internal/app"
+	"github.com/zhanhd/gitra/internal/domain"
 	"github.com/zhanhd/gitra/internal/strategies/auth"
 	"github.com/zhanhd/gitra/internal/strategies/auth/httptoken"
 	"github.com/zhanhd/gitra/internal/strategies/auth/sshkey"
@@ -110,7 +112,13 @@ func New() (*App, error) {
 	}
 
 	loginAdapter := router.New(gitRunner, os.Stdin)
-	return NewFromDeps(deps, loginAdapter, loginAdapter, loginAdapter), nil
+	application := NewFromDeps(deps, loginAdapter, loginAdapter, loginAdapter)
+	if application.Detector != nil {
+		application.Detector.SetCLIAccounts(func(ctx context.Context, providerType domain.ProviderType, host string) []string {
+			return provider.CLIAccounts(ctx, gitRunner, providerType, host)
+		})
+	}
+	return application, nil
 }
 
 type systemClock struct{}

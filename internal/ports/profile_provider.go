@@ -23,9 +23,20 @@ type LoginToken struct {
 	Source string // explicit | env | stdin | gh | glab
 }
 
+// TokenRequest describes one credential acquisition.
+type TokenRequest struct {
+	Provider domain.ProviderType
+	// Username selects a specific CLI account (gh supports several logins per
+	// host); empty means the CLI's active account.
+	Username      string
+	Explicit      string
+	AllowStdin    bool
+	AllowCLIReuse bool
+}
+
 // TokenProvider acquires a credential through the login ladder (addendum §4.2).
 type TokenProvider interface {
-	Acquire(ctx context.Context, providerType domain.ProviderType, explicit string, allowStdin, allowCLIReuse bool) (LoginToken, error)
+	Acquire(ctx context.Context, req TokenRequest) (LoginToken, error)
 }
 
 // ProfileProvider fetches the authenticated provider profile for a token.

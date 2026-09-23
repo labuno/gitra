@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -45,9 +46,11 @@ type Token struct {
 	Source string // explicit | env | stdin | gh | glab
 }
 
-// TokenRequest describes which acquisition paths are allowed.
+// TokenRequest describes which acquisition paths are allowed. Username picks a
+// specific account from the CLI's stored logins (gh keeps several).
 type TokenRequest struct {
 	Provider      domain.ProviderType
+	Username      string
 	ExplicitToken string
 	AllowStdin    bool
 	AllowCLIReuse bool
@@ -85,7 +88,7 @@ func (r *TokenResolver) Resolve(ctx context.Context, req TokenRequest) (Token, e
 		}
 	}
 	if req.AllowCLIReuse {
-		if token, err := r.reuseCLI(ctx, req.Provider); err == nil && token.Value != "" {
+		if token, err := r.reuseCLI(ctx, req.Provider, req.Username); err == nil && token.Value != "" {
 			return token, nil
 		}
 	}
@@ -94,14 +97,18 @@ func (r *TokenResolver) Resolve(ctx context.Context, req TokenRequest) (Token, e
 		domain.ErrAuthInvalid, req.Provider, req.Provider, guidance(req.Provider))
 }
 
-func (r *TokenResolver) reuseCLI(ctx context.Context, providerType domain.ProviderType) (Token, error) {
+func (r *TokenResolver) reuseCLI(ctx context.Context, providerType domain.ProviderType, username string) (Token, error) {
 	// gh/glab can hang (network, locked keychain), and they are a convenience
 	// path only: bound the probe so the UI never freezes.
 	ctx, cancel := context.WithTimeout(ctx, cliReuseTimeout)
 	defer cancel()
 	switch providerType {
 	case domain.ProviderGitHub:
-		result, err := r.runner.Run(ctx, "gh", "auth", "token")
+		args := []string{"auth", "token"}
+		if username != "" {
+			args = append(args, "--user", username)
+		}
+		result, err := r.runner.Run(ctx, "gh", args...)
 		if err != nil || result.ExitCode != 0 {
 			return Token{}, errors.New("gh CLI has no usable session")
 		}
@@ -188,4 +195,33 @@ func DoJSONBody(ctx context.Context, client HTTPDoer, method, url string, header
 		return fmt.Errorf("%w: invalid response payload: %v", ErrProfileUnavailable, err)
 	}
 	return nil
+}
+
+// CLIAccounts parses `gh auth status` output and returns the accounts logged in
+// for the given host. gh keeps several accounts per host; each one can be used
+// independently ("gh auth token --user <name>").
+func CLIAccounts(ctx context.Context, runner ports.CommandRunner, providerType domain.ProviderType, host string) []string {
+	var binary string
+	switch providerType {
+	case domain.ProviderGitHub:
+		binary = "gh"
+	default:
+		return nil // glab has no multi-account listing in V1.1
+	}
+	result, err := runner.Run(ctx, binary, "auth", "status")
+	if err != nil {
+		return nil
+	}
+	pattern := regexp.MustCompile(`Logged in to ` + regexp.QuoteMeta(host) + ` account ([A-Za-z0-9._-]+)`)
+	seen := map[string]bool{}
+	var accounts []string
+	for _, match := range pattern.FindAllStringSubmatch(result.Stdout+result.Stderr, -1) {
+		name := match[1]
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		accounts = append(accounts, name)
+	}
+	return accounts
 }

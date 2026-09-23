@@ -91,3 +91,40 @@ func TestTokenResolverDoesNotHangOnCLIProbe(t *testing.T) {
 		t.Fatalf("probe took %s, must be bounded", elapsed)
 	}
 }
+
+func TestCLIAccountsParsesMultipleLogins(t *testing.T) {
+	status := `github.com
+  ✓ Logged in to github.com account labuno (keyring)
+  - Active account: true
+  ✓ Logged in to github.com account lucas-zan (keyring)
+  - Active account: false
+`
+	runner := &fakeRunner{outputs: map[string]ports.ProcessResult{
+		"gh auth status": {ExitCode: 0, Stdout: status},
+	}}
+	accounts := CLIAccounts(context.Background(), runner, domain.ProviderGitHub, "github.com")
+	if len(accounts) != 2 || accounts[0] != "labuno" || accounts[1] != "lucas-zan" {
+		t.Fatalf("accounts = %v", accounts)
+	}
+
+	// Gitea/GitLab have no listing in this version.
+	if got := CLIAccounts(context.Background(), runner, domain.ProviderGitea, "gitea.com"); got != nil {
+		t.Fatalf("gitea accounts = %v, want nil", got)
+	}
+}
+
+func TestTokenResolverUsesRequestedCLIAccount(t *testing.T) {
+	runner := &fakeRunner{outputs: map[string]ports.ProcessResult{
+		"gh auth token --user lucas-zan": {ExitCode: 0, Stdout: "gho_lucas\n"},
+	}}
+	resolver := resolver(runner, nil, "")
+	token, err := resolver.Resolve(context.Background(), TokenRequest{
+		Provider: domain.ProviderGitHub, Username: "lucas-zan", AllowCLIReuse: true,
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if token.Value != "gho_lucas" || token.Source != "gh" {
+		t.Fatalf("token = %+v", token)
+	}
+}

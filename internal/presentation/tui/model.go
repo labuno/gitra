@@ -86,6 +86,23 @@ type loginState struct {
 	candidates  []app.Candidate
 }
 
+// bindOptionKind distinguishes what a picker row does.
+type bindOptionKind string
+
+const (
+	bindOptionBulk    bindOptionKind = "bulk"
+	bindOptionCurrent bindOptionKind = "current"
+	bindOptionUp      bindOptionKind = "up"
+	bindOptionDir     bindOptionKind = "dir"
+)
+
+// bindOption is one row of the folder picker.
+type bindOption struct {
+	kind  bindOptionKind
+	label string
+	name  string
+}
+
 // loginOptionKind distinguishes what a login row does.
 type loginOptionKind string
 
@@ -108,6 +125,9 @@ type bindState struct {
 	selected int
 	account  domain.Account
 	manual   bool // user is typing a path
+	// marked holds folders selected for a bulk bind, keyed by absolute path so
+	// marks survive navigating through subfolders.
+	marked map[string]bool
 
 	// Remote step: some repositories have no origin yet. gitra asks for the
 	// address once and never rewrites an existing remote.

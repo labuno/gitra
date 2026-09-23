@@ -31,7 +31,7 @@ type stubTokens struct {
 	err   error
 }
 
-func (s stubTokens) Acquire(context.Context, domain.ProviderType, string, bool, bool) (ports.LoginToken, error) {
+func (s stubTokens) Acquire(context.Context, ports.TokenRequest) (ports.LoginToken, error) {
 	return s.token, s.err
 }
 
