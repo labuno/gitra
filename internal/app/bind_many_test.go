@@ -17,7 +17,7 @@ func TestBindManyHandlesMixedFolders(t *testing.T) {
 	// One bindable folder, the same folder again, and one path that is not a
 	// repository. (The missing-remote case is covered below.)
 	env.git.missing["/missing"] = true
-	results, err := service.BindMany(ctx, []domain.AccountID{env.account.ID}, []string{"/repo", "/repo", "/missing"})
+	results, err := service.BindMany(ctx, env.account.ID, []string{"/repo", "/repo", "/missing"})
 	if err != nil {
 		t.Fatalf("BindMany() error = %v", err)
 	}
@@ -44,7 +44,7 @@ func TestBindManyReportsMissingRemote(t *testing.T) {
 	ctx := context.Background()
 	env := newHTTPSEnv(t, "") // repository without any remote
 	env.git.remote = ""
-	results, err := env.service.BindMany(ctx, []domain.AccountID{env.account.ID}, []string{"/repo"})
+	results, err := env.service.BindMany(ctx, env.account.ID, []string{"/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,57 +56,47 @@ func TestBindManyReportsMissingRemote(t *testing.T) {
 	}
 }
 
-// TestBindManyPicksTheAccountThatMatchesTheRemote covers the real-world mix:
-// HTTPS repositories and SSH repositories bound in one batch with an SSH
-// account selected first.
-func TestBindManyPicksTheAccountThatMatchesTheRemote(t *testing.T) {
+// TestBindManyNeverRebindsToAnotherAccount: the batch uses exactly the chosen
+// account; folders it cannot bind are reported with a precise reason.
+func TestBindManyNeverRebindsToAnotherAccount(t *testing.T) {
 	ctx := context.Background()
 	env := newHTTPSEnv(t, "https://github.com/lunafoundry/luna-site.git")
 
-	// A second account that speaks SSH.
 	sshAccount := env.account
 	sshAccount.ID = "acc_ssh"
-	sshAccount.Alias = "ssh-user"
+	sshAccount.Alias = "lucas-zan"
 	sshAccount.Transport = domain.TransportConfig{Strategy: domain.StrategySSHKey, Config: map[string]string{"private_key": "/tmp/key"}}
-
-	accounts := &multiAccounts{primary: sshAccount, extra: []domain.Account{env.account}}
-	env.deps.Accounts = accounts
+	env.deps.Accounts = &multiAccounts{primary: sshAccount, extra: []domain.Account{env.account}}
 	service := NewBindingService(env.deps)
 
-	// The SSH account is the preference, but the repository remote is HTTPS.
-	results, err := service.BindMany(ctx, []domain.AccountID{sshAccount.ID, env.account.ID}, []string{"/repo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 || results[0].Status != "bound" {
-		t.Fatalf("results = %+v", results)
-	}
-	if results[0].Account != env.account.Alias {
-		t.Fatalf("account = %q, want the HTTPS account %q", results[0].Account, env.account.Alias)
-	}
-}
-
-func TestBindManyExplainsTransportMismatch(t *testing.T) {
-	ctx := context.Background()
-	env := newHTTPSEnv(t, "git@github.com:lunafoundry/luna-site.git") // SSH remote
-	sshOnly := env.account
-	sshOnly.Alias = "ssh-user"
-	env.deps.Accounts = &multiAccounts{primary: sshOnly, extra: nil}
-	service := NewBindingService(env.deps)
-
-	results, err := service.BindMany(ctx, []domain.AccountID{sshOnly.ID}, []string{"/repo"})
+	results, err := service.BindMany(ctx, sshAccount.ID, []string{"/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(results) != 1 || results[0].Status != "failed" {
-		t.Fatalf("results = %+v", results)
+		t.Fatalf("results = %+v, want a failure instead of a silent switch", results)
 	}
-	if !strings.Contains(results[0].Reason, "SSH") || !strings.Contains(results[0].Reason, "账号") {
-		t.Fatalf("reason must explain the mismatch plainly: %q", results[0].Reason)
+	if !strings.Contains(results[0].Reason, "HTTPS") || !strings.Contains(results[0].Reason, "lucas-zan") {
+		t.Fatalf("reason must name the address type and the account: %q", results[0].Reason)
+	}
+	if len(env.bindings.saved) != 0 {
+		t.Fatalf("nothing may be bound with another account: %+v", env.bindings.saved)
 	}
 }
 
-// multiAccounts serves one primary account plus extras.
+func TestBindManyBindsWhenTheAccountFits(t *testing.T) {
+	ctx := context.Background()
+	env := newHTTPSEnv(t, "https://github.com/lunafoundry/luna-site.git")
+	results, err := env.service.BindMany(ctx, env.account.ID, []string{"/repo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Status != "bound" || results[0].Account != env.account.Alias {
+		t.Fatalf("results = %+v", results)
+	}
+}
+
+// multiAccounts serves one primary account plus extras for bulk tests.
 type multiAccounts struct {
 	primary domain.Account
 	extra   []domain.Account

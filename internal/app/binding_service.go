@@ -248,37 +248,29 @@ func (s *BindingService) EnsureOriginRemote(ctx context.Context, path, url strin
 type BatchItemResult struct {
 	Path   string
 	Status string // bound | already | skipped | failed
-	// Account is the alias that ended up owning the binding (may differ from the
-	// requested account when another one matches the remote better).
+	// Account is the alias that owns the binding (always the requested one).
 	Account string
 	// Reason is a ready-to-show explanation for anything that did not bind.
 	Reason string
 	Err    error
 }
 
-// BindMany binds several folders, choosing the account that fits each remote.
-// accountIDs are preferences: the requested account is tried first, then the
-// others, so an SSH-key account and an HTTPS account can share one batch.
-func (s *BindingService) BindMany(ctx context.Context, accountIDs []domain.AccountID, paths []string) ([]BatchItemResult, error) {
-	accounts := make([]domain.Account, 0, len(accountIDs))
-	for _, id := range accountIDs {
-		account, err := s.deps.Accounts.Get(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		accounts = append(accounts, account)
-	}
-	if len(accounts) == 0 {
-		return nil, fmt.Errorf("%w: no account to bind with", domain.ErrAccountNotFound)
+// BindMany binds several folders to exactly one account: the one the user
+// chose. A folder the account cannot bind is reported, never rebound to
+// another account behind the user's back.
+func (s *BindingService) BindMany(ctx context.Context, accountID domain.AccountID, paths []string) ([]BatchItemResult, error) {
+	account, err := s.deps.Accounts.Get(ctx, accountID)
+	if err != nil {
+		return nil, err
 	}
 	results := make([]BatchItemResult, 0, len(paths))
 	for _, path := range paths {
-		results = append(results, s.bindOne(ctx, accounts, path))
+		results = append(results, s.bindOne(ctx, account, path))
 	}
 	return results, nil
 }
 
-func (s *BindingService) bindOne(ctx context.Context, accounts []domain.Account, path string) BatchItemResult {
+func (s *BindingService) bindOne(ctx context.Context, account domain.Account, path string) BatchItemResult {
 	repo, err := s.deps.Git.DiscoverRepository(ctx, path)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotGitRepository) {
@@ -311,34 +303,28 @@ func (s *BindingService) bindOne(ctx context.Context, accounts []domain.Account,
 		}
 	}
 
-	// Prefer the requested account, then any other that matches this remote.
-	var match *domain.Account
-	var sawWrongTransport bool
-	for index := range accounts {
-		account := accounts[index]
-		if !strings.EqualFold(account.Provider.Endpoint.Host, host) {
-			continue
+	// The chosen account must fit this remote; otherwise report exactly why.
+	accountTransport := s.transportOf(account)
+	if accountTransport != transport {
+		return BatchItemResult{
+			Path: repo.RootPath, Status: "failed",
+			Reason: fmt.Sprintf("这个仓库用的是 %s 地址，而账号 %s 是 %s 类型；请换成 %s 类型的账号再绑它",
+				transportLabel(transport), account.Alias, transportLabel(accountTransport), transportLabel(transport)),
+			Err: fmt.Errorf("%w: transport mismatch", domain.ErrUnsupportedRemote),
 		}
-		if s.transportOf(account) != transport {
-			sawWrongTransport = true
-			continue
-		}
-		match = &accounts[index]
-		break
 	}
-	if match == nil {
-		reason := fmt.Sprintf("这个仓库用的是 %s 地址，但账号 %s 不匹配", transportLabel(transport), accounts[0].Alias)
-		if sawWrongTransport {
-			reason = fmt.Sprintf("这个仓库用的是 %s 地址，而你选的账号是另一种类型；请用对应的账号绑它（例如换一个 %s 登录的账号）",
-				transportLabel(transport), transportLabel(transport))
+	if !strings.EqualFold(account.Provider.Endpoint.Host, host) {
+		return BatchItemResult{
+			Path: repo.RootPath, Status: "failed",
+			Reason: fmt.Sprintf("仓库站点 %s 与账号站点 %s 不一致，请用对应站点的账号绑定",
+				host, account.Provider.Endpoint.Host),
+			Err: fmt.Errorf("%w: host mismatch", domain.ErrProviderMismatch),
 		}
-		return BatchItemResult{Path: repo.RootPath, Status: "failed", Reason: reason, Err: fmt.Errorf("%w: transport mismatch", domain.ErrUnsupportedRemote)}
 	}
-
-	if _, err := s.Bind(ctx, BindRequest{AccountID: match.ID, Path: repo.RootPath}); err != nil {
+	if _, err := s.Bind(ctx, BindRequest{AccountID: account.ID, Path: repo.RootPath}); err != nil {
 		return BatchItemResult{Path: repo.RootPath, Status: "failed", Reason: err.Error(), Err: err}
 	}
-	return BatchItemResult{Path: repo.RootPath, Status: "bound", Account: match.Alias}
+	return BatchItemResult{Path: repo.RootPath, Status: "bound", Account: account.Alias}
 }
 
 // aliasOf resolves an account alias for reporting (best effort).

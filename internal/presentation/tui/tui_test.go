@@ -1363,3 +1363,20 @@ func TestViewFitsEveryWidthAfterResize(t *testing.T) {
 		}
 	}
 }
+
+func TestBulkBindSummaryListsReasons(t *testing.T) {
+	model, _ := newTestModel(t)
+
+	updated, _ := model.Update(bindManyDoneMsg{results: []app.BatchItemResult{
+		{Path: "/tmp/a", Status: "bound", Account: "luna"},
+		{Path: "/tmp/b", Status: "failed", Reason: "这个仓库用的是 HTTPS 地址，而账号 luna 是 SSH 类型；请换成 HTTPS 类型的账号再绑它"},
+		{Path: "/tmp/c", Status: "skipped", Reason: "这个文件夹不是 Git 仓库，已跳过"},
+	}})
+	model = updated.(Model)
+	if !strings.Contains(model.message, "成功 1 个") || !strings.Contains(model.message, "失败 1 个") || !strings.Contains(model.message, "跳过 1 个") {
+		t.Fatalf("summary = %q", model.message)
+	}
+	if !strings.Contains(model.errText, "HTTPS 类型的账号") {
+		t.Fatalf("details must keep the precise reason: %q", model.errText)
+	}
+}

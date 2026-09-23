@@ -203,16 +203,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		bound, already, skipped, failed := 0, 0, 0, 0
-		byAccount := map[string]int{}
 		var details []string
 		for _, result := range msg.results {
 			reason := result.Reason
 			switch result.Status {
 			case "bound":
 				bound++
-				if result.Account != "" {
-					byAccount[result.Account]++
-				}
 			case "already":
 				already++
 			case "skipped":
@@ -224,18 +220,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.message = fmt.Sprintf("批量绑定完成：成功 %d 个", bound)
-		if len(byAccount) > 1 {
-			m.message += "（"
-			first := true
-			for alias, count := range byAccount {
-				if !first {
-					m.message += "，"
-				}
-				m.message += fmt.Sprintf("%s 用了 %d 个", alias, count)
-				first = false
-			}
-			m.message += "）"
-		}
 		if already > 0 {
 			m.message += fmt.Sprintf("，已绑定 %d 个", already)
 		}
