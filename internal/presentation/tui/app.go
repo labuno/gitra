@@ -161,6 +161,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.path != "" {
 			m.message = "已绑定：" + msg.path + " → " + msg.alias
 			m.errText = ""
+			m.lastBindDir = filepath.Dir(msg.path)
 		} else {
 			m.message = "配置已检查并修复"
 			m.errText = ""
@@ -214,6 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message += fmt.Sprintf("，失败 %d 个", failed)
 		}
 		m.errText = strings.Join(details, "\n")
+		m.lastBindDir = m.bind.path
 		m.bind.marked = map[string]bool{}
 		if m.detailAccount != nil {
 			m.loadDetailProjects(*m.detailAccount)
@@ -700,11 +702,20 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	options := m.bindOptionList()
 	switch msg.String() {
-	case "esc":
-		if m.detailAccount != nil {
-			m.screen = screenDetail
-		} else {
-			m.screen = screenAccounts
+	case "esc", "left", "h", "backspace":
+		// Inside the picker, going up one level is what users expect from Esc.
+		// Only at the directory the picker was opened in does it leave.
+		if m.bind.startPath != "" && m.bind.path != m.bind.startPath && m.bind.path != "/" {
+			return m.goUpOneLevel()
+		}
+		if msg.String() == "esc" {
+			m.lastBindDir = m.bind.path
+			if m.detailAccount != nil {
+				m.screen = screenDetail
+			} else {
+				m.screen = screenAccounts
+			}
+			m.message, m.errText = "", ""
 		}
 		return m, nil
 	case "up", "k":
@@ -739,13 +750,7 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case bindOptionCurrent:
 			return m.prepareBind()
 		case bindOptionUp:
-			parent := filepath.Dir(m.bind.path)
-			entries, err := listDirs(parent)
-			if err != nil {
-				m.errText = "无法读取文件夹：" + err.Error()
-				return m, nil
-			}
-			m.bind.path, m.bind.entries, m.bind.selected = parent, entries, 0
+			return m.goUpOneLevel()
 		case bindOptionDir:
 			next := filepath.Join(m.bind.path, option.name)
 			entries, err := listDirs(next)
@@ -756,6 +761,22 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.bind.path, m.bind.entries, m.bind.selected = next, entries, 0
 		}
 	}
+	return m, nil
+}
+
+// goUpOneLevel moves the picker to the parent directory.
+func (m Model) goUpOneLevel() (tea.Model, tea.Cmd) {
+	parent := filepath.Dir(m.bind.path)
+	if parent == m.bind.path {
+		return m, nil // already at the filesystem root
+	}
+	entries, err := listDirs(parent)
+	if err != nil {
+		m.errText = "无法读取文件夹：" + err.Error()
+		return m, nil
+	}
+	m.bind.path, m.bind.entries, m.bind.selected = parent, entries, 0
+	m.errText = ""
 	return m, nil
 }
 

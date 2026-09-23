@@ -218,14 +218,23 @@ func (m *Model) loadDetailProjects(account domain.Account) {
 	}
 }
 
-// startBind opens the folder picker rooted at the current directory.
+// startBind opens the folder picker. The remembered directory wins over the
+// suggested one when it still exists, so returning users resume where they were.
 func (m *Model) startBind(account domain.Account, path string) {
+	if m.lastBindDir != "" {
+		if info, err := os.Stat(m.lastBindDir); err == nil && info.IsDir() {
+			path = m.lastBindDir
+		}
+	}
 	entries, err := listDirs(path)
 	if err != nil {
 		m.errText = "无法读取文件夹：" + err.Error()
 		return
 	}
-	m.bind = bindState{path: path, entries: entries, account: account, marked: map[string]bool{}}
+	m.bind = bindState{
+		path: path, entries: entries, account: account,
+		marked: map[string]bool{}, startPath: path,
+	}
 	m.screen = screenBind
 }
 

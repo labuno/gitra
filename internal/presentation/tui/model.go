@@ -69,6 +69,10 @@ type Model struct {
 	// SSH key picker (loading a passphrase-protected key into ssh-agent).
 	keys     []app.SSHKeyInfo
 	keyIndex int
+
+	// lastBindDir remembers where the user browsed, so the next picker opens
+	// there instead of making them navigate again (defaults, not questions).
+	lastBindDir string
 	// confirm dialog
 	confirmPrompt  string
 	confirmAction  func() tea.Cmd
@@ -138,6 +142,9 @@ type bindState struct {
 	selected int
 	account  domain.Account
 	manual   bool // user is typing a path
+	// startPath is where the picker was opened: Esc leaves the picker only
+	// once we are back there (below it, Esc goes up one level).
+	startPath string
 	// marked holds folders selected for a bulk bind, keyed by absolute path so
 	// marks survive navigating through subfolders.
 	marked map[string]bool

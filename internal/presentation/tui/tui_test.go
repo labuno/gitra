@@ -1104,7 +1104,7 @@ func TestPickerMarksSurviveNavigation(t *testing.T) {
 	}
 
 	model.screen = screenBind
-	model.bind = bindState{path: root, entries: []string{"alpha"}, account: account, marked: map[string]bool{}}
+	model.bind = bindState{path: root, startPath: root, entries: []string{"alpha"}, account: account, marked: map[string]bool{}}
 	model = selectBindFolder(model, "alpha")
 	model, _ = press(t, model, " ")
 
@@ -1117,9 +1117,15 @@ func TestPickerMarksSurviveNavigation(t *testing.T) {
 	if len(model.markedPaths()) != 1 {
 		t.Fatalf("marks lost after descending: %v", model.markedPaths())
 	}
+	// Esc first goes up one level (back to the start directory)…
+	model, _ = press(t, model, "esc")
+	if model.screen != screenBind || model.bind.path != root {
+		t.Fatalf("esc must go up one level: screen=%v path=%q", model.screen, model.bind.path)
+	}
+	// …and only leaves the picker when pressed again at the start directory.
 	model, _ = press(t, model, "esc")
 	if model.screen != screenAccounts {
-		t.Fatalf("esc must return to the accounts screen (no detail was opened), got %v", model.screen)
+		t.Fatalf("esc at the start directory must leave the picker, got %v", model.screen)
 	}
 	model.screen = screenBind
 	model.bind.path, model.bind.entries, model.bind.selected = root, []string{"alpha"}, 0
@@ -1213,5 +1219,108 @@ func TestKeyPickerDefaultsToUsableKeysFirst(t *testing.T) {
 	}
 	if !strings.Contains(model.viewKeyPick(), "id_rsa_zz（需要口令）") {
 		t.Fatalf("locked keys must be labelled:\n%s", model.viewKeyPick())
+	}
+}
+
+// descendTo enters the named subfolders one by one, like a user would.
+func descendTo(t *testing.T, model Model, names ...string) Model {
+	t.Helper()
+	for _, name := range names {
+		model = selectBindFolder(model, name)
+		updated, _ := press(t, model, "enter")
+		model = updated
+		if model.screen != screenBind {
+			t.Fatalf("entering %q left the picker (screen=%v)", name, model.screen)
+		}
+	}
+	return model
+}
+
+func TestPickerEscWalksUpOneLevelAtATime(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	base := t.TempDir()
+	deep := filepath.Join(base, "products", "github", "ai-data-pack")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	model.startBind(account, base)
+	model = descendTo(t, model, "products", "github", "ai-data-pack")
+	if model.bind.path != deep {
+		t.Fatalf("path = %q, want %q", model.bind.path, deep)
+	}
+
+	// Esc walks up one directory at a time, staying inside the picker.
+	for _, want := range []string{
+		filepath.Join(base, "products", "github"),
+		filepath.Join(base, "products"),
+		base,
+	} {
+		model, _ = press(t, model, "esc")
+		if model.screen != screenBind {
+			t.Fatalf("esc left the picker too early (path %q)", model.bind.path)
+		}
+		if model.bind.path != want {
+			t.Fatalf("path = %q, want %q", model.bind.path, want)
+		}
+	}
+
+	// Back at the directory the picker opened in: Esc leaves the flow.
+	model, _ = press(t, model, "esc")
+	if model.screen != screenAccounts {
+		t.Fatalf("esc at the start directory must leave, got %v", model.screen)
+	}
+}
+
+func TestPickerLeftArrowAndBackspaceGoUp(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	base := t.TempDir()
+	child := filepath.Join(base, "alpha")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	model.startBind(account, base)
+	model = descendTo(t, model, "alpha")
+	if model.bind.path != child {
+		t.Fatalf("path = %q, want %q", model.bind.path, child)
+	}
+	model, _ = press(t, model, "left")
+	if model.bind.path != base {
+		t.Fatalf("left arrow must go up: %q", model.bind.path)
+	}
+
+	model = descendTo(t, model, "alpha")
+	model, _ = press(t, model, "backspace")
+	if model.bind.path != base {
+		t.Fatalf("backspace must go up one level in the list view: %q", model.bind.path)
+	}
+}
+
+func TestPickerRemembersTheLastDirectory(t *testing.T) {
+	model, application := newTestModel(t)
+	model.loadAccounts()
+	account := addHTTPSAccount(t, application, "luna")
+
+	base := t.TempDir()
+	chosen := filepath.Join(base, "projects")
+	if err := os.MkdirAll(chosen, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	model.startBind(account, base)
+	if model.bind.path != base {
+		t.Fatalf("first open = %q", model.bind.path)
+	}
+	model.lastBindDir = chosen
+	model.startBind(account, base)
+	if model.bind.path != chosen {
+		t.Fatalf("picker should resume at the remembered directory, got %q", model.bind.path)
 	}
 }

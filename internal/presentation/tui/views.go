@@ -78,7 +78,7 @@ func (m Model) helpSegments() []string {
 	case screenKeyPick:
 		return []string{"↑↓ 选择密钥", "Enter 使用", "Esc 返回"}
 	case screenBind:
-		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "E 粘贴路径", "Esc 返回"}
+		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "Esc/← 上一层", "E 粘贴路径"}
 	case screenRemote:
 		return []string{"输入/粘贴仓库地址", "Enter 确认并绑定", "Esc 返回"}
 	case screenConfirm:
@@ -462,7 +462,8 @@ func (m Model) viewBind() string {
 	builder.WriteString("选择要绑定的项目文件夹\n\n")
 	builder.WriteString(subtitleStyle.Render(
 		"回车 = 进入文件夹；在「使用这个文件夹」上回车 = 绑定它。\n"+
-			"空格 = 标记多个文件夹，标记后选「绑定已选的 N 个文件夹」可一次绑定。") + "\n\n")
+			"空格 = 标记多个文件夹，标记后选「绑定已选的 N 个文件夹」可一次绑定。\n"+
+			"Esc / ← = 返回上一层（回到起始目录时再按一次才退出）。") + "\n\n")
 	builder.WriteString("当前：" + accentStyle.Render(m.bind.path) + "\n\n")
 	if m.bind.manual {
 		builder.WriteString(accentStyle.Render(m.bind.path+"▌") + "\n")
