@@ -15,6 +15,16 @@ import (
 	"github.com/zhanhd/gitra/internal/domain"
 )
 
+// repaintFromScratch erases the screen and homes the cursor so the next frame
+// is painted on a clean slate. Bubble Tea's own ClearScreen command proved a
+// no-op in this configuration (verified byte-for-byte on a pty), so the
+// sequence is written directly; the terminal receives one small write, and the
+// renderer repaints on its next flush.
+func repaintFromScratch() tea.Msg {
+	_, _ = os.Stdout.WriteString("\x1b[2J\x1b[H")
+	return nil
+}
+
 // Run starts the interactive TUI.
 func Run(application *bootstrap.App) error {
 	// Mouse events are deliberately NOT captured: the terminal keeps its
@@ -33,7 +43,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		return m, nil
+		// Resizing re-wraps the frame that is already on screen, so the
+		// renderer's line bookkeeping no longer matches the terminal and stale
+		// lines stay behind (the duplicated help bar users hit). Erase the
+		// screen and repaint from scratch.
+		return m, repaintFromScratch
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {

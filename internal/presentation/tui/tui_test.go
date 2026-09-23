@@ -1324,3 +1324,42 @@ func TestPickerRemembersTheLastDirectory(t *testing.T) {
 		t.Fatalf("picker should resume at the remembered directory, got %q", model.bind.path)
 	}
 }
+
+func TestResizeRepaintsFromACleanScreen(t *testing.T) {
+	model, _ := newTestModel(t)
+	updated, cmd := model.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	model = updated.(Model)
+	if model.width != 120 || model.height != 40 {
+		t.Fatalf("size not stored: %dx%d", model.width, model.height)
+	}
+	if cmd == nil {
+		t.Fatal("a resize must clear and repaint: without it the terminal keeps stale wrapped lines")
+	}
+	// The command erases the screen (verified byte-for-byte on a pty: every
+	// resize emits \x1b[2J, which tea.ClearScreen did not).
+	if msg := cmd(); msg != nil {
+		t.Fatalf("repaint command returned %T, want no message", msg)
+	}
+}
+
+func TestViewFitsEveryWidthAfterResize(t *testing.T) {
+	model, application := newTestModel(t)
+	addSSHAccount(t, application, "luna")
+	model.loadAccounts()
+	model.openDetail()
+
+	// Simulate the reported sequence: enlarge, shrink, adjust.
+	for _, size := range []tea.WindowSizeMsg{
+		{Width: 160, Height: 50},
+		{Width: 60, Height: 20},
+		{Width: 100, Height: 30},
+	} {
+		updated, _ := model.Update(size)
+		model = updated.(Model)
+		for _, line := range strings.Split(model.View(), "\n") {
+			if got := displayWidth(line); got > size.Width {
+				t.Fatalf("width %d: %d-cell line after resize:\n%s", size.Width, got, line)
+			}
+		}
+	}
+}
