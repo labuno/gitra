@@ -53,10 +53,15 @@ func TestPlainFolderCanInitializeAssociateAndBind(t *testing.T) {
 }
 
 func TestPrepareRepositoryPreservesExistingRepoAndRejectsUnsupported(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "user.useConfigOnly")
+	t.Setenv("GIT_CONFIG_VALUE_0", "true")
 	_, application := newTestModel(t)
 	account := addHTTPSAccount(t, application, "luna")
 	path := newRepoDir(t)
-	gitRunT(t, path, "commit", "--allow-empty", "-m", "existing")
+	gitRunT(t, path, "-c", "user.name=Test User", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-m", "existing")
 	head := gitRunT(t, path, "rev-parse", "HEAD")
 	origin := gitRunT(t, path, "remote", "get-url", "origin")
 	if _, err := application.Bindings.PrepareRepository(context.Background(), account.ID, path); err != nil {
