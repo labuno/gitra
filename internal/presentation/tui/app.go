@@ -750,6 +750,8 @@ func (m Model) handleBindKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.prepareBind()
 	case "e":
 		m.bind.manual = true
+	case "s":
+		m.savePickerStartDirectory()
 	case "enter":
 		if m.bind.selected < 0 || m.bind.selected >= len(options) {
 			return m, nil
@@ -888,6 +890,12 @@ func (m Model) finishBind() (tea.Model, tea.Cmd) {
 // prepareBind checks whether the folder still needs a repository address before
 // binding it.
 func (m Model) prepareBind() (tea.Model, tea.Cmd) {
+	repo, err := m.app.Bindings.PrepareRepository(m.ctx(), m.bind.account.ID, m.bind.path)
+	if err != nil {
+		m.errText = plainError(err)
+		return m, nil
+	}
+	m.bind.path = repo.RootPath
 	status, err := m.app.Bindings.Status(m.ctx(), m.bind.path)
 	if err != nil {
 		m.errText = plainError(err)
@@ -896,9 +904,9 @@ func (m Model) prepareBind() (tea.Model, tea.Cmd) {
 	if status.HasOrigin {
 		return m.finishBind()
 	}
-	guess := "https://" + m.bind.account.Provider.Endpoint.Host + "/" + m.bind.account.Provider.Username + "/" + filepath.Base(status.Repository) + ".git"
+	m.errText = ""
 	m.bind.needRemote = true
-	m.bind.remoteURL = guess
+	m.bind.remoteURL = suggestedRemoteURL(m.bind.account, status.Repository)
 	m.screen = screenRemote
 	return m, nil
 }
@@ -913,7 +921,7 @@ func (m Model) handleRemoteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		if strings.TrimSpace(m.bind.remoteURL) == "" {
-			m.errText = "请粘贴仓库地址（在平台网页上复制 https://… 地址）。"
+			m.errText = "请填写与账号类型一致的仓库地址（HTTPS 或 SSH）。"
 			return m, nil
 		}
 		m.busy = true

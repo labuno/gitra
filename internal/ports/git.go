@@ -27,6 +27,11 @@ type Git interface {
 	Remotes(ctx context.Context, repo domain.Repository) ([]domain.Remote, error)
 }
 
+// RepositoryInitializer initializes an existing folder without staging or committing.
+type RepositoryInitializer interface {
+	InitializeRepository(ctx context.Context, path string) error
+}
+
 // GitConfigEntry is one repo-local git config key/value pair projected by a
 // strategy (baseline §9 ownership whitelist).
 type GitConfigEntry struct {

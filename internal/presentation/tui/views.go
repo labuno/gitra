@@ -78,7 +78,7 @@ func (m Model) helpSegments() []string {
 	case screenKeyPick:
 		return []string{"↑↓ 选择密钥", "Enter 使用", "Esc 返回"}
 	case screenBind:
-		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "Esc/← 上一层", "E 粘贴路径"}
+		return []string{"↑↓ 移动", "Enter 进入/绑定", "空格 标记多个", "B 绑定当前文件夹", "S 设为起始目录", "Esc/← 上一层", "E 粘贴路径"}
 	case screenRemote:
 		return []string{"输入/粘贴仓库地址", "Enter 确认并绑定", "Esc 返回"}
 	case screenConfirm:
@@ -460,6 +460,7 @@ func (m Model) viewKeyPick() string {
 func (m Model) viewBind() string {
 	var builder strings.Builder
 	builder.WriteString("选择要绑定的项目文件夹\n\n")
+	builder.WriteString(subtitleStyle.Render("普通文件夹会初始化 Git，再关联或创建远端仓库；按 S 将当前文件夹保存为起始目录。") + "\n")
 	builder.WriteString(subtitleStyle.Render(
 		"回车 = 进入文件夹；在「使用这个文件夹」上回车 = 绑定它。\n"+
 			"空格 = 标记多个文件夹，标记后选「绑定已选的 N 个文件夹」可一次绑定。\n"+
@@ -497,7 +498,7 @@ func (m Model) viewBind() string {
 func (m Model) viewRemote() string {
 	var builder strings.Builder
 	builder.WriteString("这个文件夹还没有仓库地址\n\n")
-	builder.WriteString(subtitleStyle.Render("在平台网页上创建仓库并复制它的地址（https://…），粘贴到下面。\n"+
+	builder.WriteString(subtitleStyle.Render("粘贴已有仓库地址，或使用下方建议地址（HTTPS 地址不存在时会询问是否创建）。\n"+
 		"已有的地址不会被修改；这里只补一个还没有的 origin。\n") + "\n")
 	builder.WriteString("> " + accentStyle.Render(m.bind.remoteURL+"▌") + "\n\n")
 	builder.WriteString(subtitleStyle.Render("回车确认并绑定，Esc 返回。") + "\n")

@@ -341,7 +341,7 @@ func TestBindAsksForRepositoryAddressWhenMissing(t *testing.T) {
 	if model.screen != screenRemote {
 		t.Fatalf("screen = %v, want remote address step", model.screen)
 	}
-	if !strings.Contains(model.bind.remoteURL, "github.com/luna/") {
+	if !strings.Contains(model.bind.remoteURL, "github.com:luna/") {
 		t.Fatalf("prefilled address should target the account: %q", model.bind.remoteURL)
 	}
 	view := model.View()

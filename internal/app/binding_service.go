@@ -17,14 +17,15 @@ import (
 
 // Deps are the ports and strategies used by the binding service.
 type Deps struct {
-	Accounts  ports.AccountStore
-	Bindings  ports.BindingStore
-	Git       ports.Git
-	Snapshots ports.SnapshotStore
-	Auth      *auth.Registry
-	Routing   *routing.Registry
-	Locker    ports.Locker
-	Clock     ports.Clock
+	Accounts    ports.AccountStore
+	Bindings    ports.BindingStore
+	Git         ports.Git
+	Initializer ports.RepositoryInitializer
+	Snapshots   ports.SnapshotStore
+	Auth        *auth.Registry
+	Routing     *routing.Registry
+	Locker      ports.Locker
+	Clock       ports.Clock
 
 	// Secrets and CredentialHelpers serve the https-token strategy (V1.1).
 	Secrets           ports.SecretStore

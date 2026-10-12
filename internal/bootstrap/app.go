@@ -28,15 +28,16 @@ import (
 
 // App is the wired application: ports plus the services built on them.
 type App struct {
-	Deps         app.Deps
-	Accounts     *app.AccountService
-	Bindings     *app.BindingService
-	Reconciler   *app.Reconciler
-	Login        *app.LoginService
-	Verification *app.VerificationService
-	Detector     *app.Detector
-	Remote       *app.RemoteService
-	Publish      *app.PublishService
+	Deps              app.Deps
+	Accounts          *app.AccountService
+	Bindings          *app.BindingService
+	Reconciler        *app.Reconciler
+	Login             *app.LoginService
+	Verification      *app.VerificationService
+	Detector          *app.Detector
+	Remote            *app.RemoteService
+	Publish           *app.PublishService
+	PickerPreferences app.PickerPreferences
 }
 
 // NewFromDeps builds every service around explicit dependencies. It is used by
@@ -96,14 +97,15 @@ func New() (*App, error) {
 
 	gitProvider := gitcli.New(gitRunner)
 	deps := app.Deps{
-		Accounts:  storage.NewAccountStore(configDir),
-		Bindings:  storage.NewBindingStore(configDir),
-		Git:       gitcli.New(gitRunner),
-		Snapshots: storage.NewSnapshotStore(),
-		Auth:      authRegistry,
-		Routing:   routingRegistry,
-		Locker:    storage.NewFileLocker(filepath.Join(configDir, ".lock")),
-		Clock:     systemClock{},
+		Accounts:    storage.NewAccountStore(configDir),
+		Bindings:    storage.NewBindingStore(configDir),
+		Git:         gitcli.New(gitRunner),
+		Initializer: gitProvider,
+		Snapshots:   storage.NewSnapshotStore(),
+		Auth:        authRegistry,
+		Routing:     routingRegistry,
+		Locker:      storage.NewFileLocker(filepath.Join(configDir, ".lock")),
+		Clock:       systemClock{},
 
 		Secrets:           secrets,
 		CredentialHelpers: secretstore.NewHelperResolver(gitRunner, configDir),
@@ -113,6 +115,7 @@ func New() (*App, error) {
 
 	loginAdapter := router.New(gitRunner, os.Stdin)
 	application := NewFromDeps(deps, loginAdapter, loginAdapter, loginAdapter)
+	application.PickerPreferences = storage.NewPickerPreferences(configDir)
 	if application.Detector != nil {
 		application.Detector.SetCLIAccounts(func(ctx context.Context, providerType domain.ProviderType, host string) []string {
 			return provider.CLIAccounts(ctx, gitRunner, providerType, host)

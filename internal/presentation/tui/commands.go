@@ -218,13 +218,12 @@ func (m *Model) loadDetailProjects(account domain.Account) {
 	}
 }
 
-// startBind opens the folder picker. The remembered directory wins over the
-// suggested one when it still exists, so returning users resume where they were.
+// startBind opens at the saved directory, or the session's last location.
 func (m *Model) startBind(account domain.Account, path string) {
-	if m.lastBindDir != "" {
-		if info, err := os.Stat(m.lastBindDir); err == nil && info.IsDir() {
-			path = m.lastBindDir
-		}
+	path, err := m.pickerStartDirectory(path)
+	if err != nil {
+		m.errText = "无法读取起始目录设置：" + err.Error()
+		return
 	}
 	entries, err := listDirs(path)
 	if err != nil {
@@ -236,6 +235,50 @@ func (m *Model) startBind(account domain.Account, path string) {
 		marked: map[string]bool{}, startPath: path,
 	}
 	m.screen = screenBind
+}
+
+func (m Model) pickerStartDirectory(path string) (string, error) {
+	if m.lastBindDir != "" {
+		if info, err := os.Stat(m.lastBindDir); err == nil && info.IsDir() {
+			path = m.lastBindDir
+		}
+	}
+	if m.app.PickerPreferences != nil {
+		start, err := m.app.PickerPreferences.StartDirectory()
+		if err != nil {
+			return "", err
+		}
+		if start != "" {
+			path = start
+		}
+	}
+	return path, nil
+}
+
+func suggestedRemoteURL(account domain.Account, path string) string {
+	endpoint := account.Provider.Endpoint
+	repository := account.Provider.Username + "/" + filepath.Base(path) + ".git"
+	if account.Transport.Strategy != domain.StrategySSHKey {
+		return "https://" + endpoint.Host + "/" + repository
+	}
+	if endpoint.SSHPort == 22 {
+		return endpoint.SSHUser + "@" + endpoint.Host + ":" + repository
+	}
+	return fmt.Sprintf("ssh://%s@%s:%d/%s", endpoint.SSHUser, endpoint.Host, endpoint.SSHPort, repository)
+}
+
+func (m *Model) savePickerStartDirectory() {
+	if m.app.PickerPreferences == nil {
+		m.errText = "起始目录设置不可用"
+		return
+	}
+	if err := m.app.PickerPreferences.SetStartDirectory(m.bind.path); err != nil {
+		m.errText = "无法保存起始目录：" + err.Error()
+		m.message = ""
+		return
+	}
+	m.message = "已保存起始目录：" + m.bind.path
+	m.errText = ""
 }
 
 // listDirs lists the selectable folders inside path.
@@ -278,6 +321,12 @@ func (m *Model) ensureAndCheckRemoteCommand(account domain.Account, path, url st
 			if err := bindings.EnsureOriginRemote(ctx, path, url); err != nil {
 				return remoteCheckMsg{err: err}
 			}
+		}
+		if account.Transport.Strategy == domain.StrategySSHKey {
+			if _, err := bindings.Bind(ctx, app.BindRequest{AccountID: account.ID, Path: path}); err != nil {
+				return bindDoneMsg{path: path, alias: account.Alias, err: err}
+			}
+			return bindDoneMsg{path: path, alias: account.Alias}
 		}
 		if remote == nil {
 			return remoteCheckMsg{err: fmt.Errorf("在线校验不可用")}
