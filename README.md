@@ -68,6 +68,15 @@ In the folder picker, press `S` to save the current folder as the starting direc
 > To run from source, use `./scripts/build-app.sh` to generate `dist/Gitra.app`,
 > or double-click `Gitra.command` at the repository root. The latter builds on first launch and requires Go.
 
+### Windows x64: portable terminal app
+
+1. Install [Git for Windows](https://gitforwindows.org/) with its default Git Credential Manager and command-line PATH options, then reopen your terminal.
+2. Download `Gitra-Windows-x64.zip`, extract the entire archive, and double-click `Gitra.cmd`. No Go or WSL is required.
+3. For browser authorization, install [GitHub CLI (`gh`)](https://cli.github.com/). Token login works without `gh`.
+4. Sign in and bind a folder using the same keyboard controls as on macOS. `gitra.exe` also supports the CLI commands below.
+
+The launcher uses UTF-8 and keeps errors visible before closing. HTTPS authentication reuses the configured Git credential helper, normally Git Credential Manager backed by Windows Credential Manager. Windows CI checks native file locks, account credential isolation, Unicode/space paths, initialization, binding, a first push to a local remote, unbinding, and the extracted launcher. Browser authorization and interactive desktop rendering still need a manual trial. This package targets x64; it is a terminal app.
+
 ### CLI: scripts and automation
 
 The CLI `bind` command expects an initialized Git repository; automatic folder initialization is available in the terminal UI's single-folder binding flow.
@@ -97,14 +106,14 @@ gitra manages repository identity and authentication. It does not provide a Git 
 
 ## Current status and limitations
 
-- Implemented: account management, HTTPS and SSH binding and restoration, login through provider CLIs or access tokens, explicit identity verification, first upload, a card-based terminal UI, single-folder Git initialization, saved picker starting directories, JSON output, and defined exit codes. The full `go test ./...` suite and `go vet ./...` pass.
-- Planned: built-in device flow, account-field editing and a clone wizard in the terminal UI, and first-class Windows support. Built-in device flow requires a registered OAuth application's client ID.
+- Implemented: account management, HTTPS and SSH binding and restoration, login through provider CLIs or access tokens, explicit identity verification, first upload, a card-based terminal UI, single-folder Git initialization, saved picker starting directories, JSON output, defined exit codes, and a Windows x64 portable package. The full `go test ./...` suite and `go vet ./...` pass.
+- Planned: built-in device flow, account-field editing and a clone wizard in the terminal UI. Built-in device flow requires a registered OAuth application's client ID.
 - Passphrase-protected SSH keys must be loaded into the SSH agent. The SSH login picker can invoke `ssh-add`; identity probes do not prompt for a passphrase.
 - Automatic initialization applies to single-folder binding in the terminal UI. CLI and bulk binding expect existing Git repositories.
 
 ## Releases and automation
 
-- **CI** (`.github/workflows/ci.yml`): pushes and pull requests targeting `main` run formatting checks, vet, tests, and builds, plus a macOS application-bundle smoke check.
+- **CI** (`.github/workflows/ci.yml`): pushes and pull requests targeting `main` run formatting checks, vet, tests, and builds, plus macOS bundle and Windows runtime/portable-package smoke checks. Development branches under `agent/**` also run CI; successful Windows jobs provide a test ZIP as an Actions artifact.
 - **Release** (`.github/workflows/release.yml`): pushing a tag beginning with `v` builds and publishes release assets:
 
   ```bash
@@ -112,7 +121,7 @@ gitra manages repository identity and authentication. It does not provide a Git 
   git push origin v0.1.0  # Trigger the release workflow
   ```
 
-  New releases upload only the universal macOS application archive `Gitra-macOS.zip` and `checksums.txt`. GitHub also provides two source archives automatically.
+  New releases upload the universal macOS application archive `Gitra-macOS.zip`, the Windows x64 portable archive `Gitra-Windows-x64.zip`, and shared `checksums.txt`. GitHub also provides two source archives automatically.
   Earlier releases may include separate CLI archives for macOS, Linux, and Windows; those existing downloads are retained. Build the CLI from source when needed.
   The workflow creates the release if needed and attaches assets to the matching tag.
 
@@ -140,7 +149,10 @@ Requires Go 1.25.1 or later and the native Git executable. Building the macOS ap
 
 ```bash
 go build ./... && go test ./... && go vet ./...
-./scripts/build-app.sh  # Generate dist/Gitra.app
+./scripts/build-app.sh  # Generate dist/Gitra.app on macOS
+python3 scripts/build-windows.py  # Generate dist/Gitra-Windows-x64.zip
+python3 scripts/test-build-windows.py
+python3 scripts/test-release-workflow.py
 ```
 
 Architecture and behavioral contracts are documented in `docs/`:

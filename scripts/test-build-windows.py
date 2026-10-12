@@ -2,11 +2,13 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
 
+sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("build_windows", ROOT / "scripts/build-windows.py")
 builder = importlib.util.module_from_spec(spec)

@@ -79,6 +79,15 @@ HTTPS 地址不存在时可选择创建仓库，SSH 账号使用 SSH 地址关�
 > 想跑源码版本：`./scripts/build-app.sh` 生成 `dist/Gitra.app`；
 > 或直接双击仓库根目录的 `Gitra.command`（首次会自动构建，需要本机有 Go）。
 
+### Windows x64（解压后双击启动）
+
+1. 安装 [Git for Windows](https://gitforwindows.org/)，保留默认的 Git Credential Manager 和命令行 PATH 选项，安装后重新打开终端。
+2. 下载 `Gitra-Windows-x64.zip`，完整解压后双击 `Gitra.cmd`。不需要安装 Go 或 WSL。
+3. 浏览器授权需要 [GitHub CLI（gh）](https://cli.github.com/)；直接粘贴访问码不需要 `gh`。
+4. 登录并绑定文件夹，键盘操作与 macOS 相同。也可以直接使用 `gitra.exe` 执行下面的命令。
+
+启动脚本使用 UTF-8，报错后保留窗口供阅读。HTTPS 认证沿用已配置的 Git helper，通常为 Git Credential Manager，使用 Windows Credential Manager 保存凭据。Windows CI 验证原生文件锁、两个账号凭据隔离、中文及空格路径、初始化、绑定、向本地远端首次上传、解绑和解压后的启动脚本；浏览器授权和桌面交互显示仍需实际试用。当前提供 x64 终端应用包。
+
 ### 命令行（给脚本与自动化）
 
 CLI 的 `bind` 命令要求已初始化的 Git 仓库；普通文件夹自动初始化适用于 TUI 的单文件夹绑定流程。
@@ -110,16 +119,16 @@ gitra unbind [path]                    # 还原绑定前状态
 ## 当前状态与限制
 
 - 已实现：账号管理、HTTPS/SSH 双路径绑定与还原、登录（gh 复用 / 访问码 / 官方 gh 浏览器授权）、
-  显式身份验证、首次上传、卡片式 TUI、单文件夹 Git 初始化、起始目录保存、`--json` 与退出码契约；全量 `go test ./...` 与 `go vet ./...` 通过。
+  显式身份验证、首次上传、卡片式 TUI、单文件夹 Git 初始化、起始目录保存、`--json` 与退出码契约、Windows x64 便携包；全量 `go test ./...` 与 `go vet ./...` 通过。
 - 待实现：内置 device flow（需先注册 OAuth App 的 client_id）、TUI 内的账号字段编辑页、
-  TUI 内克隆仓库向导、Windows 作为一等平台。
+  TUI 内克隆仓库向导。
 - SSH 密钥若带口令，需要加载到 SSH agent；SSH 登录选择器可以调用 `ssh-add`，身份探测本身不会弹口令提示。
 - 自动初始化只适用于 TUI 单文件夹绑定；CLI 与批量绑定仍要求已有 Git 仓库。
 
 ## 发布与自动化（GitHub Actions）
 
 - **CI**（`.github/workflows/ci.yml`）：`main` 分支推送与 Pull Request 会跑 gofmt/vet/`go test`/构建，
-  并在 macOS 上构建一次应用包做冒烟（防止平台相关退化）。
+  并验证 macOS 应用包及 Windows 核心行为和便携包。`agent/**` 开发分支也运行 CI，成功的 Windows 任务提供可下载测试包。
 - **Release**（`.github/workflows/release.yml`）：推送 **以 `v` 开头的 tag** 即自动构建并发布：
 
   ```bash
@@ -127,7 +136,7 @@ gitra unbind [path]                    # 还原绑定前状态
   git push origin v0.1.0  # 触发 Release workflow
   ```
 
-  后续发布仅上传 macOS 应用包 `Gitra-macOS.zip`（内含首次使用说明，同时支持 Intel 与 Apple Silicon）和 `checksums.txt`；
+  后续发布上传 macOS 应用包 `Gitra-macOS.zip`（同时支持 Intel 与 Apple Silicon）、Windows x64 便携包 `Gitra-Windows-x64.zip`，以及两者共用的 `checksums.txt`；
   GitHub 自动附带两个源码包。历史版本中的各平台 CLI 压缩包保留；需要命令行版时也可以从源码构建；
   随后自动创建（或更新）同名的 GitHub Release 并附上下载说明。
   （也可以在 GitHub 网页上「Draft a new release」创建同名 tag，工作流会把产物补齐到该 Release。）
@@ -155,7 +164,10 @@ git push -u origin main      # 一次性；也可以直接用 gitra 的「U 首�
 
 ```bash
 go build ./... && go test ./... && go vet ./...
-./scripts/build-app.sh          # 生成 macOS 应用包 dist/Gitra.app
+./scripts/build-app.sh          # 在 macOS 上生成 dist/Gitra.app
+python3 scripts/build-windows.py  # 生成 dist/Gitra-Windows-x64.zip
+python3 scripts/test-build-windows.py
+python3 scripts/test-release-workflow.py
 ```
 
 架构与契约文档见 `docs/`（这些详细设计文档目前使用中文）：

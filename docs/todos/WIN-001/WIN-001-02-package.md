@@ -19,7 +19,7 @@ Windows 用户下载一个 ZIP 后可双击启动；后续 release 同时生成 
 
 ## Tasks
 
-- [ ] `T01` 生成可双击启动的 Windows x64 ZIP 并加入发布与 CI。
+- [x] `T01` 生成可双击启动的 Windows x64 ZIP 并加入发布与 CI。
   - **Test and RED**: 打包测试期望 exe/cmd/中英说明以及标注版本；工作流测试期望 Windows/macOS/校验三个产物，旧流程缺少 Windows。
   - **Execution logic**: 脚本编译 Windows x64 控制台 exe，生成 UTF-8 终端启动与 Git 缺失提示脚本，复制中英说明，ZIP 打包；Windows CI 解压并执行 CLI，release 上传包再统一校验。
   - **Files and responsibilities**: scripts/build-windows.py、对应测试、Windows 启动模板、CI 与 release；README 说明安装 Git/gh 可选及测试边界。
@@ -28,9 +28,15 @@ Windows 用户下载一个 ZIP 后可双击启动；后续 release 同时生成 
 
 ## Done
 
-- [ ] 测试先行且打包与运行 Gate 通过。
-- [ ] 文档与执行图更新并通过校验。
+- [x] 测试先行且打包与运行 Gate 通过。
+- [x] 文档与执行图更新并通过校验。
 
 ## STOP conditions
 
 Windows runtime Gate 未通过，或打包需要超出 x64 便携版范围时停止依赖工作。
+
+## Evidence / Handoff
+
+RED: missing build-windows.py and workflow asset contract failed before implementation. GREEN: two package tests and five release workflow tests passed locally and on Linux CI. Run 38224523819 passed Windows runtime and extracted-package smoke, including version, Chinese/space path, missing Git and failed-command behavior; macOS smoke and Linux full regression passed. Actions artifact 11735189609 contains Gitra-Windows-x64.zip. Local Go regression/vet and real Windows cross-build passed. README variants and package instructions agree on Git/gh requirements.
+
+Release uploads one package per desktop platform and generates checksums after both uploads. No new tag was created. Actual release upload will run for the next user-specified tag; interactive browser authorization and desktop rendering remain manual checks.

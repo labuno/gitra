@@ -60,7 +60,7 @@
       ],
       "todo": "WIN-001-02-package.md",
       "readiness": "READY",
-      "status": "待测试验证",
+      "status": "验证成功",
       "depends_on": [
         "WIN-001-01"
       ],
@@ -80,7 +80,26 @@
         "Windows package smoke",
         "python3 scripts/test-release-workflow.py"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "command": "python3 scripts/test-build-windows.py",
+          "result": "PASS",
+          "scope": "local and Linux CI",
+          "verified_at": "2026-10-12T08:38:07.914080+00:00"
+        },
+        {
+          "command": "Windows package smoke",
+          "result": "PASS",
+          "scope": "https://github.com/labuno/gitra/actions/runs/38224523819",
+          "verified_at": "2026-10-12T08:38:07.914080+00:00"
+        },
+        {
+          "command": "python3 scripts/test-release-workflow.py",
+          "result": "PASS",
+          "scope": "local and Linux CI",
+          "verified_at": "2026-10-12T08:38:07.914080+00:00"
+        }
+      ]
     }
   ]
 }
