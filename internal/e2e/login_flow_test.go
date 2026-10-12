@@ -80,7 +80,10 @@ func newLoginE2E(t *testing.T, server *httptest.Server, stdin string) *loginE2E 
 	t.Setenv("GITRA_CONFIG_DIR", configDir)
 	t.Setenv("GITRA_TOKEN", "")
 
-	helper := "store --file=" + filepath.Join(configDir, "credentials")
+	helper, err := secretstore.ManagedFileHelper(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	gitRunner := ghBlockingRunner{real: runner.New()}
 	secrets := secretstore.NewGitCredentialStore(gitRunner, helper)
 

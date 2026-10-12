@@ -3,7 +3,6 @@ package secretstore
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -112,7 +111,10 @@ func TestDeleteRejectsAndIsIdempotent(t *testing.T) {
 // Integration: real git with the built-in store helper on an isolated file.
 func TestStoreRoundTripWithRealGit(t *testing.T) {
 	dir := t.TempDir()
-	helper := "store --file=" + filepath.Join(dir, "credentials")
+	helper, err := ManagedFileHelper(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	store := NewGitCredentialStore(runner.New(), helper)
 	ctx := context.Background()
 

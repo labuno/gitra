@@ -46,7 +46,8 @@ func (s *Strategy) BuildGitConfig(req auth.BuildRequest) ([]ports.GitConfigEntry
 	if err != nil {
 		return nil, err
 	}
-	command := fmt.Sprintf("ssh -i %q -o IdentitiesOnly=yes", path)
+	quoted := "'" + strings.ReplaceAll(filepath.ToSlash(path), "'", "'\"'\"'") + "'"
+	command := "ssh -i " + quoted + " -o IdentitiesOnly=yes"
 	if req.Account.Provider.Endpoint.SSHCommandNeedsPort(req.RemoteHasExplicitPort) {
 		command += fmt.Sprintf(" -p %d", req.Account.Provider.Endpoint.SSHPort)
 	}

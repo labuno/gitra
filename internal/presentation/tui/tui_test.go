@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/zhanhd/gitra/internal/adapters/secretstore"
 	"github.com/zhanhd/gitra/internal/app"
 	"github.com/zhanhd/gitra/internal/bootstrap"
 	"github.com/zhanhd/gitra/internal/domain"
@@ -34,7 +35,11 @@ func newTestModel(t *testing.T) (Model, *bootstrap.App) {
 	withFakeLookPath(t, map[string]string{})
 	configDir := t.TempDir()
 	// Never touch the real system keychain from tests.
-	t.Setenv("GITRA_CREDENTIAL_HELPER", "store --file="+filepath.Join(configDir, "credentials"))
+	helper, err := secretstore.ManagedFileHelper(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITRA_CREDENTIAL_HELPER", helper)
 	t.Setenv("GITRA_CONFIG_DIR", configDir)
 	application, err := bootstrap.New()
 	if err != nil {

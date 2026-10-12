@@ -2,8 +2,10 @@ package secretstore
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/zhanhd/gitra/internal/ports"
@@ -28,6 +30,9 @@ func ResolveHelper(ctx context.Context, runner ports.CommandRunner, configDir st
 	if configured.ExitCode == 0 && strings.TrimSpace(configured.Stdout) != "" {
 		return "", nil
 	}
+	if runtime.GOOS == "windows" {
+		return windowsCredentialHelper(ctx, runner)
+	}
 
 	execPath, err := runner.Run(ctx, "git", "--exec-path")
 	if err != nil {
@@ -43,6 +48,17 @@ func ResolveHelper(ctx context.Context, runner ports.CommandRunner, configDir st
 	return ManagedFileHelper(configDir)
 }
 
+func windowsCredentialHelper(ctx context.Context, runner ports.CommandRunner) (string, error) {
+	manager, err := runner.Run(ctx, "git", "credential-manager", "--version")
+	if err != nil {
+		return "", err
+	}
+	if manager.ExitCode != 0 {
+		return "", fmt.Errorf("install Git for Windows with Git Credential Manager, or configure credential.helper")
+	}
+	return "manager", nil
+}
+
 // ManagedFileHelper returns the gitra-managed store helper and makes sure its
 // directory and file permissions are owner-only.
 func ManagedFileHelper(configDir string) (string, error) {
@@ -55,5 +71,6 @@ func ManagedFileHelper(configDir string) (string, error) {
 			return "", err
 		}
 	}
-	return "store --file=" + storePath, nil
+	quoted := "'" + strings.ReplaceAll(filepath.ToSlash(storePath), "'", "'\"'\"'") + "'"
+	return "store --file=" + quoted, nil
 }

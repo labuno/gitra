@@ -54,7 +54,7 @@ func (a *Adapter) DiscoverRepository(ctx context.Context, path string) (domain.R
 	if top.ExitCode != 0 {
 		return domain.Repository{}, fmt.Errorf("%w: %s", domain.ErrNotGitRepository, firstLine(top.Stderr))
 	}
-	root := strings.TrimSpace(top.Stdout)
+	root := filepath.Clean(strings.TrimSpace(top.Stdout))
 
 	gitDirRes, err := a.run(ctx, root, "rev-parse", "--absolute-git-dir")
 	if err != nil {
@@ -63,7 +63,7 @@ func (a *Adapter) DiscoverRepository(ctx context.Context, path string) (domain.R
 	if gitDirRes.ExitCode != 0 {
 		return domain.Repository{}, fmt.Errorf("%w: %s", domain.ErrNotGitRepository, firstLine(gitDirRes.Stderr))
 	}
-	gitDir := strings.TrimSpace(gitDirRes.Stdout)
+	gitDir := filepath.Clean(strings.TrimSpace(gitDirRes.Stdout))
 
 	commonRes, err := a.run(ctx, root, "rev-parse", "--git-common-dir")
 	if err != nil {
