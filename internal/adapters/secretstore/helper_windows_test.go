@@ -30,7 +30,8 @@ func TestWindowsHelperReportsMissingManager(t *testing.T) {
 
 func TestWindowsCredentialManagerIsolatesAccounts(t *testing.T) {
 	t.Setenv("GCM_INTERACTIVE", "never")
-	t.Setenv("GCM_CREDENTIAL_STORE", "wincred")
+	t.Setenv("GCM_PROVIDER", "generic")
+	t.Setenv("GCM_CREDENTIAL_STORE", "wincredman")
 	t.Setenv("GIT_TERMINAL_PROMPT", "0")
 	store := NewGitCredentialStore(runner.New(), "manager")
 	ctx := context.Background()
