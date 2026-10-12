@@ -14,8 +14,8 @@ import (
 // ResolveHelper decides which credential helper gitra should use:
 //
 //  1. the user's configured helper chain (returned as "" so git decides), else
-//  2. the platform helper shipped with git (macOS osxkeychain), else
-//  3. a gitra-managed file store under the config directory (0600).
+//  2. Git Credential Manager on Windows (missing helper is an error), or
+//  3. macOS osxkeychain when available, else a managed file store (0600).
 func ResolveHelper(ctx context.Context, runner ports.CommandRunner, configDir string) (string, error) {
 	// Explicit override (tests, portable installs, power users): use it as-is so
 	// no test ever touches the real system keychain.

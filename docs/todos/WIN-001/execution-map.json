@@ -19,7 +19,7 @@
       ],
       "todo": "WIN-001-01-runtime.md",
       "readiness": "READY",
-      "status": "待测试验证",
+      "status": "验证成功",
       "depends_on": [],
       "blockers": [],
       "consumes": [],
@@ -34,7 +34,20 @@
         "go test ./...",
         "Windows core tests"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "command": "go test ./...",
+          "result": "PASS",
+          "scope": "macOS local and Linux CI",
+          "verified_at": "2026-10-12T08:34:16.516015+00:00"
+        },
+        {
+          "command": "Windows core tests",
+          "result": "PASS",
+          "scope": "https://github.com/labuno/gitra/actions/runs/38224078961",
+          "verified_at": "2026-10-12T08:34:16.516015+00:00"
+        }
+      ]
     },
     {
       "id": "WIN-001-02",
@@ -46,8 +59,8 @@
         "Package"
       ],
       "todo": "WIN-001-02-package.md",
-      "readiness": "BLOCKED",
-      "status": "待执行",
+      "readiness": "READY",
+      "status": "待测试验证",
       "depends_on": [
         "WIN-001-01"
       ],

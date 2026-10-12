@@ -71,12 +71,12 @@ class ReleaseWorkflowTest(unittest.TestCase):
     def test_missing_release_notes_stop_creation(self):
         self.run_creation("v0.1.4-rc1", has_notes=False)
 
-    def test_only_macos_app_and_checksums_are_uploaded(self):
+    def test_only_application_packages_and_checksums_are_uploaded(self):
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
         uploads = re.findall(r'gh release upload "\$TAG" (\S+)', workflow)
-        self.assertEqual(uploads, ["dist/Gitra-macOS.zip", "assets/checksums.txt"])
+        self.assertEqual(uploads, ["dist/Gitra-macOS.zip", "dist/Gitra-Windows-x64.zip", "assets/checksums.txt"])
         checksums = workflow.split("\n  checksums:\n", 1)[1]
-        self.assertIn("needs: macos-app", checksums)
+        self.assertIn("needs: [macos-app, windows-app]", checksums)
 
 
 if __name__ == "__main__":

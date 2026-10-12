@@ -22,6 +22,7 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: python3 scripts/test-release-workflow.py
+      - run: python3 scripts/test-build-windows.py
 
   # Create the release once so every build job can attach its own file
   # directly: one copy per artefact, no intermediate workflow artefacts.
@@ -98,8 +99,30 @@ jobs:
           ditto -c -k --keepParent dist/Gitra-macOS dist/Gitra-macOS.zip
           gh release upload "$TAG" dist/Gitra-macOS.zip --clobber
 
+  windows-app:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and attach the Windows portable zip
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python scripts/build-windows.py --version "$VERSION"
+          python scripts/test-windows-package.py --version "$VERSION"
+          gh release upload "$TAG" dist/Gitra-Windows-x64.zip --clobber
+
   checksums:
-    needs: macos-app
+    needs: [macos-app, windows-app]
     runs-on: ubuntu-latest
     steps:
       - name: Generate checksums from the published assets

@@ -30,6 +30,7 @@ jobs:
       - run: go build ./...
       - run: go test ./...
       - run: python3 scripts/test-release-workflow.py
+      - run: python3 scripts/test-build-windows.py
 
   macos-app-smoke:
     runs-on: macos-latest
@@ -62,3 +63,12 @@ jobs:
           ./internal/presentation/tui ./internal/e2e
           -run 'TestWindows|TestFileLocker|TestManagedFileHelperQuotes|TestBuildGitConfig|TestInitialize|TestPlainFolder|TestPickerStartDirectory|TestFirstPublish|TestLoginBindAndCredentialRetrieval|TestUnbindRestoresPreBindState'
           -count=1 -timeout=120s
+      - name: Build Windows portable package
+        run: python scripts/build-windows.py --version ci
+      - name: Verify Windows portable package
+        run: python scripts/test-windows-package.py --version ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gitra-Windows-x64
+          path: dist/Gitra-Windows-x64.zip
+          retention-days: 14
