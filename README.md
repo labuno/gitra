@@ -118,6 +118,10 @@ gitra manages repository identity and authentication. It does not provide a Git 
 
 The binary includes its version: `gitra --version` prints the release tag, or `dev` for a local build.
 
+For release candidates, use tags such as `v0.1.4-rc1`, followed by `v0.1.4-rc2` if fixes are needed.
+They run the same release workflow and publish the same assets, marked as **Pre-release** without replacing the latest stable release.
+After verifying a candidate, publish a stable tag such as `v0.1.4` at the verified commit. Create a new tag for each candidate instead of moving existing tags.
+
 ## First push
 
 Create a local commit before uploading a new repository. The first push sets the upstream branch:

@@ -21,6 +21,7 @@ jobs:
           cache: true
       - run: go vet ./...
       - run: go test ./...
+      - run: python3 scripts/test-release-workflow.py
 
   # Create the release once so every build job can attach its own file
   # directly: one copy per artefact, no intermediate workflow artefacts.
@@ -52,7 +53,11 @@ jobs:
           **校验完整性**：`checksums.txt` 是所有文件的 sha256。
           NOTES
           sed -i 's/^          //' release-notes.md
-          gh release create "$TAG" --title "$TAG" --notes-file release-notes.md
+          release_args=(release create "$TAG" --title "$TAG" --notes-file release-notes.md)
+          case "$TAG" in
+            *-rc[0-9]*) release_args+=(--prerelease --latest=false) ;;
+          esac
+          gh "${release_args[@]}"
 
   build:
     needs: prepare
