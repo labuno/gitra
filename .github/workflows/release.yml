@@ -51,40 +51,6 @@ jobs:
           esac
           gh "${release_args[@]}"
 
-  build:
-    needs: prepare
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        goos: [darwin, linux, windows]
-        goarch: [arm64, amd64]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Build and attach the platform zip
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-          VERSION: ${{ github.ref_name }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          ext=""
-          if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          mkdir -p dist
-          go build -trimpath -ldflags "-s -w -X ${VERSION_PKG}=${VERSION}" \
-            -o "dist/gitra-${GOOS}-${GOARCH}${ext}" ./cmd/gitra
-          # zip 保住可执行权限：浏览器下载裸文件会丢掉它。
-          (cd dist && zip -q "gitra-${GOOS}-${GOARCH}${ext}.zip" "gitra-${GOOS}-${GOARCH}${ext}")
-          gh release upload "$TAG" "dist/gitra-${GOOS}-${GOARCH}${ext}.zip" --clobber
-
   macos-app:
     needs: prepare
     runs-on: macos-latest
@@ -133,7 +99,7 @@ jobs:
           gh release upload "$TAG" dist/Gitra-macOS.zip --clobber
 
   checksums:
-    needs: [build, macos-app]
+    needs: macos-app
     runs-on: ubuntu-latest
     steps:
       - name: Generate checksums from the published assets

@@ -1,6 +1,7 @@
 """Exercise the release creation step with a fake GitHub CLI, without network access."""
 
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,7 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 def creation_step():
     workflow = (ROOT / ".github/workflows/release.yml").read_text()
     prepare = workflow.split("name: Create the release if it does not exist yet", 1)[1]
-    return textwrap.dedent(prepare.split("run: |\n", 1)[1].split("\n  build:", 1)[0])
+    body = prepare.split("run: |\n", 1)[1]
+    return textwrap.dedent(re.split(r"\n  [a-z][a-z-]*:\n", body, maxsplit=1)[0])
 
 
 class ReleaseWorkflowTest(unittest.TestCase):
@@ -68,6 +70,13 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
     def test_missing_release_notes_stop_creation(self):
         self.run_creation("v0.1.4-rc1", has_notes=False)
+
+    def test_only_macos_app_and_checksums_are_uploaded(self):
+        workflow = (ROOT / ".github/workflows/release.yml").read_text()
+        uploads = re.findall(r'gh release upload "\$TAG" (\S+)', workflow)
+        self.assertEqual(uploads, ["dist/Gitra-macOS.zip", "assets/checksums.txt"])
+        checksums = workflow.split("\n  checksums:\n", 1)[1]
+        self.assertIn("needs: macos-app", checksums)
 
 
 if __name__ == "__main__":

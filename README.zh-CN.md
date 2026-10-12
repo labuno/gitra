@@ -127,9 +127,8 @@ gitra unbind [path]                    # 还原绑定前状态
   git push origin v0.1.0  # 触发 Release workflow
   ```
 
-  产物包括：六个平台的 `gitra-{darwin,linux,windows}-{arm64,amd64}.zip`、
-  macOS 应用包 `Gitra-macOS.zip`（内含首次使用说明）、以及 `checksums.txt`；
-  Windows 命令行压缩包在 `.zip` 前额外包含 `.exe`，macOS 应用包同时支持 Intel 与 Apple Silicon；
+  后续发布仅上传 macOS 应用包 `Gitra-macOS.zip`（内含首次使用说明，同时支持 Intel 与 Apple Silicon）和 `checksums.txt`；
+  GitHub 自动附带两个源码包。历史版本中的各平台 CLI 压缩包保留；需要命令行版时也可以从源码构建；
   随后自动创建（或更新）同名的 GitHub Release 并附上下载说明。
   （也可以在 GitHub 网页上「Draft a new release」创建同名 tag，工作流会把产物补齐到该 Release。）
 

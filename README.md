@@ -112,8 +112,8 @@ gitra manages repository identity and authentication. It does not provide a Git 
   git push origin v0.1.0  # Trigger the release workflow
   ```
 
-  Assets include CLI ZIP archives for macOS, Linux, and Windows on arm64 and amd64, the universal macOS application archive `Gitra-macOS.zip`, and `checksums.txt`.
-  CLI archive names use `gitra-{darwin,linux,windows}-{arm64,amd64}.zip`; Windows archives include `.exe` before `.zip`.
+  New releases upload only the universal macOS application archive `Gitra-macOS.zip` and `checksums.txt`. GitHub also provides two source archives automatically.
+  Earlier releases may include separate CLI archives for macOS, Linux, and Windows; those existing downloads are retained. Build the CLI from source when needed.
   The workflow creates the release if needed and attaches assets to the matching tag.
 
 The binary includes its version: `gitra --version` prints the release tag, or `dev` for a local build.
