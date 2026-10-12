@@ -34,6 +34,10 @@ func TestWindowsCredentialManagerIsolatesAccounts(t *testing.T) {
 	t.Setenv("GIT_TERMINAL_PROMPT", "0")
 	store := NewGitCredentialStore(runner.New(), "manager")
 	ctx := context.Background()
+	probe, err := runner.New().RunWithInput(ctx, "git", "protocol=https\nhost=gitra-test.invalid\nusername=gitra-test-a\npassword=fixture-gitra-test-a\n\n", "credential-manager", "store")
+	if err != nil || probe.ExitCode != 0 {
+		t.Fatalf("Windows credential store probe: error=%v exit=%d stderr=%s", err, probe.ExitCode, probe.Stderr)
+	}
 	for _, user := range []string{"gitra-test-a", "gitra-test-b"} {
 		ref := "gitra-test.invalid/" + user
 		if err := store.Set(ctx, ref, "fixture-"+user); err != nil {

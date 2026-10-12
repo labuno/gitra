@@ -24,7 +24,11 @@ func TestWindowsGitDiscoveryNormalizesPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repo.RootPath != root || repo.GitDir != filepath.Join(root, ".git") {
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repo.RootPath != canonical || repo.GitDir != filepath.Join(canonical, ".git") {
 		t.Fatalf("native paths = %+v", repo)
 	}
 }
