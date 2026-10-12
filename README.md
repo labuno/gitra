@@ -122,6 +122,8 @@ For release candidates, use tags such as `v0.1.4-rc1`, followed by `v0.1.4-rc2` 
 They run the same release workflow and publish the same assets, marked as **Pre-release** without replacing the latest stable release.
 After verifying a candidate, publish a stable tag such as `v0.1.4` at the verified commit. Create a new tag for each candidate instead of moving existing tags.
 
+Before tagging a release, add `docs/releases/<tag>.md` with English and Chinese notes covering new features, fixes, limitations, and downloads. The workflow uses that document as the release body and stops if it is missing or empty.
+
 ## First push
 
 Create a local commit before uploading a new repository. The first push sets the upstream branch:

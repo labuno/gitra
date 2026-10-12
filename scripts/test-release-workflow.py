@@ -3,7 +3,6 @@
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import textwrap
 import unittest
@@ -19,7 +18,7 @@ def creation_step():
 
 
 class ReleaseWorkflowTest(unittest.TestCase):
-    def run_creation(self, tag, exists=False):
+    def run_creation(self, tag, exists=False, has_notes=True):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             gh = directory / "gh"
@@ -29,22 +28,26 @@ class ReleaseWorkflowTest(unittest.TestCase):
                 'printf "%s\\0" "$@" > "$GH_CALLS"\n'
             )
             gh.chmod(0o755)
-            if sys.platform == "darwin":
-                # The release step runs on Ubuntu; adapt GNU sed -i for local BSD sed.
-                sed = directory / "sed"
-                sed.write_text('#!/bin/bash\nshift\nexec /usr/bin/sed -i "" "$@"\n')
-                sed.chmod(0o755)
             calls = directory / "calls"
+            notes = directory / "docs/releases" / (tag + ".md")
+            notes.parent.mkdir(parents=True)
+            if has_notes:
+                notes.write_text("## What's new\n\n- Version-specific changes.\n\n## 更新内容\n")
             env = dict(os.environ, TAG=tag, GH_CALLS=str(calls),
                        GH_VIEW_STATUS="0" if exists else "1",
                        PATH=str(directory) + os.pathsep + os.environ["PATH"])
             result = subprocess.run(["bash", "-c", creation_step()], cwd=directory,
                                     env=env, capture_output=True, text=True)
+            if not has_notes and not exists:
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(calls.exists())
+                self.assertIn("Missing release notes", result.stderr)
+                return []
             self.assertEqual(result.returncode, 0, result.stderr)
             if not calls.exists():
                 return []
             args = calls.read_bytes().decode().rstrip("\0").split("\0")
-            self.assertTrue((directory / "release-notes.md").exists())
+            self.assertEqual(args[args.index("--notes-file") + 1], "docs/releases/" + tag + ".md")
             return args
 
     def test_rc_is_prerelease_and_does_not_replace_latest(self):
@@ -62,6 +65,9 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
     def test_existing_release_is_not_created_again(self):
         self.assertEqual(self.run_creation("v0.1.4-rc1", exists=True), [])
+
+    def test_missing_release_notes_stop_creation(self):
+        self.run_creation("v0.1.4-rc1", has_notes=False)
 
 
 if __name__ == "__main__":

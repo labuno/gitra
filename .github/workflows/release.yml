@@ -29,6 +29,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Create the release if it does not exist yet
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,21 +40,12 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             exit 0
           fi
-          cat > release-notes.md <<'NOTES'
-          ## 下载哪一个？
-
-          **macOS**：下载 `Gitra-macOS.zip` → 双击解压 → 双击解压出来的 `Gitra.app`。
-          文件夹里的 `第一次使用请看这里.txt` 写好了首次打开被系统拦截时怎么办。
-
-          **Linux / Windows / 想用命令行**：下载对应平台的 `gitra-<系统>-<架构>.zip`，
-          解压后即可运行。
-
-          发布里只提供 zip：浏览器直接下载裸二进制会丢掉可执行权限（双击会被当文本打开）。
-
-          **校验完整性**：`checksums.txt` 是所有文件的 sha256。
-          NOTES
-          sed -i 's/^          //' release-notes.md
-          release_args=(release create "$TAG" --title "$TAG" --notes-file release-notes.md)
+          notes_file="docs/releases/${TAG}.md"
+          if [ ! -s "$notes_file" ]; then
+            echo "Missing release notes: $notes_file" >&2
+            exit 1
+          fi
+          release_args=(release create "$TAG" --title "$TAG" --notes-file "$notes_file")
           case "$TAG" in
             *-rc[0-9]*) release_args+=(--prerelease --latest=false) ;;
           esac
