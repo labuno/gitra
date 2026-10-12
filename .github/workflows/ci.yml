@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'agent/**']
   pull_request:
     branches: [main]
 
@@ -46,3 +46,19 @@ jobs:
           test -x dist/Gitra.app/Contents/MacOS/GitraLauncher
           test -f dist/Gitra.app/Contents/Info.plist
           dist/Gitra.app/Contents/Resources/gitra --version
+
+  windows-runtime:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Windows runtime contracts
+        run: >-
+          go test ./internal/adapters/storage ./internal/adapters/gitcli
+          ./internal/adapters/secretstore ./internal/strategies/auth/sshkey
+          ./internal/presentation/tui ./internal/e2e
+          -run 'TestWindows|TestFileLocker|TestManagedFileHelperQuotes|TestBuildGitConfig|TestInitialize|TestPlainFolder|TestPickerStartDirectory|TestFirstPublish|TestLoginBindAndCredentialRetrieval|TestUnbindRestoresPreBindState'
+          -count=1 -timeout=120s

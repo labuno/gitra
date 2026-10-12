@@ -63,3 +63,17 @@ func TestFileLockerTimesOut(t *testing.T) {
 		t.Fatalf("error = %v, want context.DeadlineExceeded", err)
 	}
 }
+
+func TestFileLockerReleasesAfterCallbackError(t *testing.T) {
+	locker := NewFileLocker(filepath.Join(t.TempDir(), ".lock"))
+	want := errors.New("operation failed")
+	if err := locker.WithWriteLock(context.Background(), func() error { return want }); !errors.Is(err, want) {
+		t.Fatalf("callback error = %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	called := false
+	if err := locker.WithWriteLock(ctx, func() error { called = true; return nil }); err != nil || !called {
+		t.Fatalf("lock not released: called=%v error=%v", called, err)
+	}
+}

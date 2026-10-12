@@ -61,7 +61,7 @@ func TestBuildGitConfigPortRules(t *testing.T) {
 				t.Fatalf("entries = %+v", entries)
 			}
 			value := entries[0].Value
-			if !strings.Contains(value, "IdentitiesOnly=yes") || !strings.Contains(value, key) {
+			if !strings.Contains(value, "IdentitiesOnly=yes") || !strings.Contains(value, filepath.ToSlash(key)) {
 				t.Fatalf("sshCommand = %q", value)
 			}
 			if strings.Contains(value, "-p ") != tt.wantContainsPort {
@@ -73,7 +73,7 @@ func TestBuildGitConfigPortRules(t *testing.T) {
 
 func TestBuildGitConfigQuotesPathsWithSpaces(t *testing.T) {
 	dir := t.TempDir()
-	key := filepath.Join(dir, "my keys", "id_ed25519")
+	key := filepath.Join(dir, "my $HOME keys 中文", "id_ed25519")
 	if err := os.MkdirAll(filepath.Dir(key), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestBuildGitConfigQuotesPathsWithSpaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(entries[0].Value, `"`+key+`"`) {
+	if !strings.Contains(entries[0].Value, `'`+filepath.ToSlash(key)+`'`) {
 		t.Fatalf("path with spaces must be quoted: %q", entries[0].Value)
 	}
 }

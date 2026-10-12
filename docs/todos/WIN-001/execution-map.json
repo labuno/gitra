@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "plan_id": "WIN-001",
+  "project_root": "../../..",
+  "source_plan": "docs/plans/windows-portable-plan.md",
+  "work_packages": [
+    "runtime",
+    "package"
+  ],
+  "nodes": [
+    {
+      "id": "WIN-001-01",
+      "title": "Windows runtime",
+      "work_packages": [
+        "runtime"
+      ],
+      "source_sections": [
+        "Runtime"
+      ],
+      "todo": "WIN-001-01-runtime.md",
+      "readiness": "READY",
+      "status": "待测试验证",
+      "depends_on": [],
+      "blockers": [],
+      "consumes": [],
+      "produces": [
+        {
+          "id": "artifact:windows-runtime",
+          "kind": "runtime",
+          "description": "Windows runtime"
+        }
+      ],
+      "integration_gates": [
+        "go test ./...",
+        "Windows core tests"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "WIN-001-02",
+      "title": "Windows portable package",
+      "work_packages": [
+        "package"
+      ],
+      "source_sections": [
+        "Package"
+      ],
+      "todo": "WIN-001-02-package.md",
+      "readiness": "BLOCKED",
+      "status": "待执行",
+      "depends_on": [
+        "WIN-001-01"
+      ],
+      "blockers": [],
+      "consumes": [
+        "artifact:windows-runtime"
+      ],
+      "produces": [
+        {
+          "id": "artifact:windows-portable-package",
+          "kind": "package",
+          "description": "Windows portable package"
+        }
+      ],
+      "integration_gates": [
+        "python3 scripts/test-build-windows.py",
+        "Windows package smoke",
+        "python3 scripts/test-release-workflow.py"
+      ],
+      "evidence": []
+    }
+  ]
+}

@@ -2,6 +2,7 @@ package secretstore
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -77,5 +78,17 @@ func TestResolveHelperHonoursOverride(t *testing.T) {
 	}
 	if helper != "store --file=/tmp/isolated" {
 		t.Fatalf("helper = %q, want the override", helper)
+	}
+}
+
+func TestManagedFileHelperQuotesSpaceAndUnicodePaths(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "测试 config")
+	helper, err := ManagedFileHelper(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "store --file='" + filepath.ToSlash(filepath.Join(dir, "credentials")) + "'"
+	if helper != want {
+		t.Fatalf("helper path is not shell-safe: %q", helper)
 	}
 }
